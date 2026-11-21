@@ -39,11 +39,6 @@ export default function Login() {
     setPassword('password123');
   };
 
-  const fillRahul = () => {
-    setMobile('6299400242');
-    setPassword('password123');
-  };
-
   const fillAdmin = () => {
     setMobile('9999999999');
     setPassword('admin123');
@@ -83,30 +78,22 @@ export default function Login() {
           <p className="text-[11px] font-bold text-lime-300 mb-2 text-center uppercase tracking-wider">
             {isHi ? '⚡ एक-क्लिक डेमो लॉगिन' : '⚡ One-Click Demo Accounts'}
           </p>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={fillDemoFarmer}
-              className="py-1.5 px-2 rounded-xl text-[11px] font-semibold bg-emerald-950/80 border border-emerald-400/40 text-emerald-200 hover:text-white hover:border-lime-400 hover:bg-emerald-800 transition-all flex items-center justify-center gap-1 shadow-sm"
+              className="py-2 px-3 rounded-xl text-xs font-semibold bg-emerald-950/80 border border-emerald-400/40 text-emerald-200 hover:text-white hover:border-lime-400 hover:bg-emerald-800 transition-all flex items-center justify-center gap-2 shadow-sm"
             >
-              <UserCheck className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-              <span>{isHi ? 'रमेश' : 'Ramesh'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={fillRahul}
-              className="py-1.5 px-2 rounded-xl text-[11px] font-semibold bg-emerald-950/80 border border-emerald-400/40 text-emerald-200 hover:text-white hover:border-lime-400 hover:bg-emerald-800 transition-all flex items-center justify-center gap-1 shadow-sm"
-            >
-              <UserCheck className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-              <span>{isHi ? 'राहुल' : 'Rahul'}</span>
+              <UserCheck className="w-4 h-4 text-lime-400" />
+              <span>{isHi ? 'किसान डेमो' : 'Farmer Demo'}</span>
             </button>
             <button
               type="button"
               onClick={fillAdmin}
-              className="py-1.5 px-2 rounded-xl text-[11px] font-semibold bg-emerald-950/80 border border-emerald-400/40 text-emerald-200 hover:text-white hover:border-lime-400 hover:bg-emerald-800 transition-all flex items-center justify-center gap-1 shadow-sm"
+              className="py-2 px-3 rounded-xl text-xs font-semibold bg-emerald-950/80 border border-emerald-400/40 text-emerald-200 hover:text-white hover:border-lime-400 hover:bg-emerald-800 transition-all flex items-center justify-center gap-2 shadow-sm"
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-              <span>{isHi ? 'एडमिन' : 'Admin'}</span>
+              <ShieldCheck className="w-4 h-4 text-sky-400" />
+              <span>{isHi ? 'व्यवस्थापक डेमो' : 'Admin Demo'}</span>
             </button>
           </div>
         </div>
