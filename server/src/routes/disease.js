@@ -1,20 +1,25 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
 const { db } = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
 const { analyzeImage } = require('../services/disease');
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '..', '..', 'uploads'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'disease-' + uniqueSuffix + path.extname(file.originalname));
+// Ensure writable uploads directory (/tmp/uploads on Vercel)
+const isVercel = process.env.VERCEL === '1' || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) || Boolean(process.env.LAMBDA_TASK_ROOT);
+const uploadsDir = isVercel ? path.join('/tmp', 'uploads') : path.join(__dirname, '..', '..', 'uploads');
+
+if (!fs.existsSync(uploadsDir)) {
+  try {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  } catch (err) {
+    console.warn('mkdirSync uploadsDir error:', err.message);
   }
-});
+}
+
+// Memory storage to eliminate read-only filesystem errors on Vercel
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -39,7 +44,16 @@ router.post('/analyze', requireAuth, upload.single('image'), async (req, res) =>
     }
 
     const { crop_id } = req.body;
-    const imagePath = req.file.filename;
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(req.file.originalname) || '.jpg';
+    const filename = 'disease-' + uniqueSuffix + ext;
+
+    // Persist to uploads folder if writable
+    try {
+      fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
+    } catch (fsErr) {
+      console.warn('Could not persist image to disk:', fsErr.message);
+    }
 
     // Get crop info if provided
     let cropName = null;
@@ -48,16 +62,16 @@ router.post('/analyze', requireAuth, upload.single('image'), async (req, res) =>
       if (crop) cropName = crop.name;
     }
 
-    // Analyze the image
-    const analysis = await analyzeImage(req.file.path, cropName);
+    // Analyze the image via AI / Agronomic Engine
+    const analysis = await analyzeImage(req.file.buffer, cropName, req.file.originalname);
 
-    // Save report
+    // Save report in database
     const result = db.prepare(
       'INSERT INTO disease_reports (user_id, crop_id, image_path, diagnosis, confidence, suggestions) VALUES (?, ?, ?, ?, ?, ?)'
     ).run(
       req.user.id,
-      crop_id || null,
-      imagePath,
+      crop_id ? Number(crop_id) : null,
+      filename,
       analysis.diagnosis,
       analysis.confidence,
       analysis.suggestions
@@ -71,7 +85,7 @@ router.post('/analyze', requireAuth, upload.single('image'), async (req, res) =>
     if (error.message.includes('Only JPEG')) {
       return res.status(400).json({ success: false, error: error.message });
     }
-    res.status(500).json({ success: false, error: 'Failed to analyze image' });
+    res.status(500).json({ success: false, error: 'Failed to analyze image: ' + error.message });
   }
 });
 

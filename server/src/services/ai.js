@@ -1,5 +1,6 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+let GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+if (GEMINI_MODEL.includes('3.5')) GEMINI_MODEL = 'gemini-1.5-flash';
 const XAI_API_KEY = process.env.XAI_API_KEY;
 const XAI_URL = 'https://api.x.ai/v1/chat/completions';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
