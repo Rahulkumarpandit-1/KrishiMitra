@@ -1,0 +1,12 @@
+{
+  "name": "krishimitra-monorepo",
+  "version": "1.0.0",
+  "description": "KrishiMitra - Smart Farming Decision Assistant for Indian Farmers",
+  "scripts": {
+    "server": "npm --prefix server start",
+    "server:dev": "npm --prefix server run dev",
+    "client": "npm --prefix client dev",
+    "client:build": "npm --prefix client build",
+    "test:server": "node server/test-server.js"
+  }
+}

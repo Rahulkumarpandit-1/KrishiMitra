@@ -1,0 +1,175 @@
+const express = require('express');
+const { db } = require('../config/db');
+const { requireAuth } = require('../middleware/auth');
+const { chat } = require('../services/ai');
+
+const router = express.Router();
+
+// GET /api/assistant/conversations
+router.get('/conversations', requireAuth, (req, res) => {
+  try {
+    const conversations = db.prepare(`
+      SELECT ac.*, c.name as crop_name
+      FROM assistant_conversations ac
+      LEFT JOIN crops c ON ac.crop_id = c.id
+      WHERE ac.user_id = ?
+      ORDER BY ac.created_at DESC
+    `).all(req.user.id);
+
+    res.json({ success: true, data: conversations });
+  } catch (error) {
+    console.error('Get conversations error:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch conversations' });
+  }
+});
+
+// POST /api/assistant/conversations
+router.post('/conversations', requireAuth, (req, res) => {
+  try {
+    const { title, crop_id } = req.body;
+
+    const result = db.prepare(
+      'INSERT INTO assistant_conversations (user_id, title, crop_id) VALUES (?, ?, ?)'
+    ).run(req.user.id, title || 'New Conversation', crop_id || null);
+
+    const conversation = db.prepare('SELECT * FROM assistant_conversations WHERE id = ?').get(result.lastInsertRowid);
+    res.status(201).json({ success: true, data: conversation });
+  } catch (error) {
+    console.error('Create conversation error:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to create conversation' });
+  }
+});
+
+// GET /api/assistant/conversations/:id
+router.get('/conversations/:id', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const conversation = db.prepare('SELECT * FROM assistant_conversations WHERE id = ? AND user_id = ?').get(id, req.user.id);
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+
+    const messages = db.prepare(
+      'SELECT * FROM assistant_messages WHERE conversation_id = ? ORDER BY created_at ASC'
+    ).all(id);
+
+    res.json({ success: true, data: { conversation, messages } });
+  } catch (error) {
+    console.error('Get conversation error:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch conversation' });
+  }
+});
+
+// GET /api/assistant/conversations/:id/messages
+router.get('/conversations/:id/messages', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const conversation = db.prepare('SELECT * FROM assistant_conversations WHERE id = ? AND user_id = ?').get(id, req.user.id);
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+
+    const messages = db.prepare(
+      'SELECT * FROM assistant_messages WHERE conversation_id = ? ORDER BY created_at ASC'
+    ).all(id);
+
+    res.json({ success: true, data: messages });
+  } catch (error) {
+    console.error('Get messages error:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch messages' });
+  }
+});
+
+// POST /api/assistant/chat
+router.post('/chat', requireAuth, async (req, res) => {
+  try {
+    const { conversation_id, message } = req.body;
+
+    if (!conversation_id || !message) {
+      return res.status(400).json({ success: false, error: 'conversation_id and message are required' });
+    }
+
+    const conversation = db.prepare('SELECT * FROM assistant_conversations WHERE id = ? AND user_id = ?').get(conversation_id, req.user.id);
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+
+    // Save user message
+    db.prepare('INSERT INTO assistant_messages (conversation_id, role, content) VALUES (?, ?, ?)').run(conversation_id, 'user', message);
+
+    // Build context
+    const profile = db.prepare('SELECT * FROM farmer_profiles WHERE user_id = ?').get(req.user.id);
+    const farmerCrops = db.prepare(`
+      SELECT fc.*, c.name as crop_name, c.stages
+      FROM farmer_crops fc
+      JOIN crops c ON fc.crop_id = c.id
+      WHERE fc.user_id = ? AND fc.status = 'active'
+    `).all(req.user.id);
+
+    const history = db.prepare(
+      'SELECT role, content FROM assistant_messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 20'
+    ).all(conversation_id);
+
+    // Get AI response
+    const aiResponse = await chat(message, {
+      user: req.user,
+      profile,
+      farmerCrops,
+      history,
+      language: req.user.preferred_language
+    });
+
+    // Save assistant message
+    db.prepare('INSERT INTO assistant_messages (conversation_id, role, content) VALUES (?, ?, ?)').run(conversation_id, 'assistant', aiResponse);
+
+    // Update conversation title if first message
+    if (history.length <= 1) {
+      const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
+      db.prepare('UPDATE assistant_conversations SET title = ? WHERE id = ?').run(title, conversation_id);
+    }
+
+    const assistantMsg = {
+      id: Date.now(),
+      conversation_id,
+      role: 'assistant',
+      content: aiResponse,
+      created_at: new Date().toISOString()
+    };
+
+    res.json({
+      success: true,
+      data: {
+        user_message: message,
+        assistant_message: aiResponse,
+        message: assistantMsg
+      }
+    });
+  } catch (error) {
+    console.error('Chat error:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to process chat message' });
+  }
+});
+
+// DELETE /api/assistant/conversations/:id
+router.delete('/conversations/:id', requireAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const conversation = db.prepare('SELECT * FROM assistant_conversations WHERE id = ? AND user_id = ?').get(id, req.user.id);
+    if (!conversation) {
+      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    }
+
+    db.prepare('DELETE FROM assistant_messages WHERE conversation_id = ?').run(id);
+    db.prepare('DELETE FROM assistant_conversations WHERE id = ?').run(id);
+
+    res.json({ success: true, data: { message: 'Conversation deleted successfully' } });
+  } catch (error) {
+    console.error('Delete conversation error:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to delete conversation' });
+  }
+});
+
+module.exports = router;

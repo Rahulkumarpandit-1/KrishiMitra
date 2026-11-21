@@ -1,0 +1,19 @@
+{
+  "name": "krishimitra-server",
+  "version": "1.0.0",
+  "description": "KrishiMitra - Agricultural Assistance Platform Backend",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "setup:db": "node setup-db.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "dotenv": "^16.3.1",
+    "multer": "^1.4.5-lts.1"
+  }
+}
