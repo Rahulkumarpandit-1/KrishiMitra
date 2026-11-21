@@ -341,7 +341,7 @@ export default function DiseaseDetection() {
         <p className="text-xs text-emerald-300/80 mb-4">
           {t('disease_upload_desc') || 'Take a close-up photo of the affected leaf showing spots or discoloration.'}
         </p>
-        
+
         {preview ? (
           <div className="relative rounded-2xl overflow-hidden border border-emerald-400/40 bg-emerald-950/60 p-2 shadow-inner">
             <img src={preview} alt="Leaf Preview" className="w-full rounded-xl max-h-72 object-contain mx-auto" />

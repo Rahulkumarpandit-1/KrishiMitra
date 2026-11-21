@@ -15,12 +15,17 @@ router.get('/', requireAuth, async (req, res) => {
     let longitude = parseFloat(lon);
 
     if (isNaN(latitude) || isNaN(longitude)) {
-      const profile = db.prepare('SELECT latitude, longitude FROM farmer_profiles WHERE user_id = ?').get(req.user.id);
-      if (profile && profile.latitude && profile.longitude) {
-        latitude = profile.latitude;
-        longitude = profile.longitude;
-      } else {
-        latitude = 28.6139; // New Delhi default
+      try {
+        const profile = db.prepare('SELECT latitude, longitude FROM farmer_profiles WHERE user_id = ?').get(req.user.id);
+        if (profile && profile.latitude && profile.longitude) {
+          latitude = profile.latitude;
+          longitude = profile.longitude;
+        } else {
+          latitude = 28.6139; // New Delhi default
+          longitude = 77.2090;
+        }
+      } catch (dbErr) {
+        latitude = 28.6139;
         longitude = 77.2090;
       }
     }
