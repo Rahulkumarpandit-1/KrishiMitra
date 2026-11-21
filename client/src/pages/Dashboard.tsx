@@ -15,6 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { weatherApi, farmerCropsApi, assistantApi, profileApi } from '../lib/api';
 import VoiceButton from '../components/VoiceButton';
+import VoiceModal from '../components/VoiceModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import type { WeatherData, FarmerCrop, FarmerProfile } from '../lib/types';
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [assistantReply, setAssistantReply] = useState<string | null>(null);
   const [assistantVisual, setAssistantVisual] = useState<any | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
   // Today's Interactive Farm Tasks
   const [tasks, setTasks] = useState([
@@ -118,9 +120,9 @@ export default function Dashboard() {
   const activeCrop = crops[selectedCropIndex] || crops[0] || null;
 
   // Handle AI question submission
-  const handleAsk = async (textToAsk?: string, autoSpeak = false) => {
+  const handleAsk = async (textToAsk?: string, autoSpeak = false): Promise<string> => {
     const question = textToAsk || query;
-    if (!question.trim()) return;
+    if (!question.trim()) return '';
 
     setQuery('');
     setIsAsking(true);
@@ -150,14 +152,15 @@ export default function Dashboard() {
       if (autoSpeak) {
         toggleSpeech(replyText);
       }
+      return replyText;
     } catch (err: any) {
       console.error('Ask assistant error:', err);
-      setAssistantReply(
-        isHi
-          ? 'वर्तमान मौसम और फसल स्थिति के अनुसार नियमित सिंचाई और कीट निगरानी की सलाह दी जाती है।'
-          : 'Based on your crop stage and weather, optimal moisture management and pest scouting are recommended.'
-      );
+      const fallback = isHi
+        ? 'वर्तमान मौसम और फसल स्थिति के अनुसार नियमित सिंचाई और कीट निगरानी की सलाह दी जाती है।'
+        : 'Based on your crop stage and weather, optimal moisture management and pest scouting are recommended.';
+      setAssistantReply(fallback);
       setAssistantVisual(null);
+      return fallback;
     } finally {
       setIsAsking(false);
     }
@@ -229,6 +232,16 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-20 relative">
+      {/* ChatGPT-Style Full Screen Voice Assistant Modal */}
+      <VoiceModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onSubmit={async (spokenText) => {
+          return await handleAsk(spokenText, false);
+        }}
+        initialCropName={activeCrop?.crop_name || 'Crop'}
+      />
+
       {/* ============================================================== */}
       {/* TOP ROW: SEEDLING PLANT HERO (LEFT) + AI VOICE ASSISTANT (RIGHT)*/}
       {/* ============================================================== */}
@@ -390,9 +403,13 @@ export default function Dashboard() {
 
           {/* Orb + Assistant Greeting Header */}
           <div className="flex flex-col items-center text-center z-10">
-            {/* 3D DotLottie Asset Player for Live Animated Orb */}
-            <div className="relative flex items-center justify-center mb-2">
-              <div className="w-24 h-24 flex items-center justify-center">
+            {/* 3D DotLottie Asset Player - Tapping opens VoiceModal */}
+            <div
+              className="relative flex items-center justify-center mb-2 cursor-pointer group"
+              onClick={() => setIsVoiceModalOpen(true)}
+              title="Click for Voice Assistant Mode"
+            >
+              <div className="w-24 h-24 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <dotlottie-player
                   src="https://lottie.host/89534c3f-10dd-4fac-b3fb-867963f3cffc/YerGkXzK8J.lottie"
                   background="transparent"
@@ -410,8 +427,8 @@ export default function Dashboard() {
             </h3>
             <p className="text-xs sm:text-sm text-emerald-200/80 mt-1 max-w-sm">
               {isHi
-                ? 'मैं कृषि मित्र हूँ - आपका AI खेती सहायक। मैंने आज के मौसम और फसल डेटा का विश्लेषण कर लिया है।'
-                : "I'm KrishiMitra, your AI Farming Assistant. I've analyzed your field and weather data for today."}
+                ? 'मैं कृषि मित्र हूँ - आपका AI खेती सहायक। बोलकर या लिखकर कोई भी सवाल पूछें।'
+                : "I'm KrishiMitra, your AI Farming Assistant. Tap mic to talk or type any farming question."}
             </p>
           </div>
 
@@ -463,7 +480,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Floating Voice Input Bar */}
+          {/* Floating Voice Input Bar with ChatGPT Voice Modal Trigger */}
           <div className="mt-3 z-10">
             <form
               onSubmit={(e) => {
@@ -472,14 +489,10 @@ export default function Dashboard() {
               }}
               className="flex items-center gap-2 p-1.5 rounded-full bg-emerald-950/90 border border-emerald-400/40 shadow-inner focus-within:border-lime-400 transition-all"
             >
-              {/* Voice Microphone Input Button */}
+              {/* Voice Microphone Input Button that triggers ChatGPT Modal */}
               <VoiceButton
                 size="sm"
-                onInterim={(interim) => setQuery(interim)}
-                onResult={(transcribed) => {
-                  setQuery(transcribed);
-                  handleAsk(transcribed, true);
-                }}
+                onClick={() => setIsVoiceModalOpen(true)}
                 className="w-9 h-9 !min-h-[36px] !min-w-[36px]"
               />
 
@@ -914,11 +927,7 @@ export default function Dashboard() {
           </div>
           <VoiceButton
             size="md"
-            onInterim={(interim) => setQuery(interim)}
-            onResult={(text) => {
-              setQuery(text);
-              handleAsk(text, true);
-            }}
+            onClick={() => setIsVoiceModalOpen(true)}
             className="w-11 h-11 shadow-lg"
           />
         </div>

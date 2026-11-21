@@ -40,7 +40,7 @@ const AGRI_VISUALS = {
 
 /**
  * Intelligent ICAR Agricultural Fallback Engine
- * Generates dynamic, natural, stage-specific agricultural advisory
+ * Generates natural, concise, stage-specific agricultural advisory
  */
 function generateAgriculturalAdvisory(message, context = {}) {
   const { user, profile, farmerCrops, language } = context;
@@ -52,27 +52,13 @@ function generateAgriculturalAdvisory(message, context = {}) {
   const cropStage = primaryCrop?.growth_stage?.current_stage || primaryCrop?.current_stage?.name || 'Vegetative';
   const farmerName = user?.name ? user.name.split(' ')[0] : (isHi ? 'किसान भाई' : 'Farmer');
 
-  // 1. Greetings & Conversational Queries
-  const isGreeting = /^(hi|hey|hello|namaste|namaskar|pranam|kya haal|kaise ho|who are you|about you|help|नमस्ते|प्रणाम|हैलो|हाय)/i.test(q);
+  // 1. Natural Concise Greetings (Never dump long lectures for "hi")
+  const isGreeting = /^(hi|hey|hello|namaste|namaskar|pranam|kya haal|kaise ho|who are you|about you|नमस्ते|प्रणाम|हैलो|हाय)/i.test(q);
   if (isGreeting || q.length <= 4) {
     if (isHi) {
-      return `🙏 **नमस्ते ${farmerName}! मैं आपका कृषि मित्र (KrishiMitra) AI सहायक हूँ।**\n\n` +
-        `आज आपके खेत में **${cropName}** (${cropStage} अवस्था) की स्थिति अनुकूल है।\n\n` +
-        `आप मुझसे खेती से जुड़ा कोई भी सवाल नीचे दिए गए **माइक बटन 🎙️ पर बोलकर** या लिखकर पूछ सकते हैं, जैसे:\n` +
-        `• *"अगली सिंचाई कब करनी चाहिए?"*\n` +
-        `• *"पत्तियां पीली क्यों पड़ रही हैं?"*\n` +
-        `• *"क्या कल कीटनाशक का छिड़काव कर सकते हैं?"*\n` +
-        `• *"इस अवस्था में कौन सी खाद डालें?"*\n\n` +
-        `बताइए, आज मैं आपकी क्या सहायता करूँ?`;
+      return `नमस्ते ${farmerName}! मैं आपका कृषि मित्र (KrishiMitra) AI सहायक हूँ। आज आपके खेत में ${cropName} (${cropStage} अवस्था) की स्थिति अनुकूल है। आप सिंचाई, रोग, खाद या मौसम के बारे में कुछ भी पूछ सकते हैं या बोलकर बता सकते हैं। मैं आपकी क्या मदद करूँ?`;
     }
-    return `🙏 **Hello ${farmerName}! I'm KrishiMitra, your personal AI Farming Assistant.**\n\n` +
-      `Your active **${cropName}** plot is currently in the **${cropStage} stage** and performing well.\n\n` +
-      `You can ask me any farming question by **tapping the mic button 🎙️ to speak**, or typing:\n` +
-      `• *"When should I irrigate next?"*\n` +
-      `• *"Why are my crop leaves turning yellow?"*\n` +
-      `• *"Is tomorrow suitable for spraying pesticides?"*\n` +
-      `• *"Which fertilizer should I apply right now?"*\n\n` +
-      `How can I assist your field today?`;
+    return `Hello ${farmerName}! I'm KrishiMitra, your personal AI Farming Assistant. Your ${cropName} plot is currently in the ${cropStage} stage. Feel free to ask or speak any question about irrigation, pest control, weather, or fertilizer. How can I help you today?`;
   }
 
   // 2. Irrigation queries
@@ -145,14 +131,12 @@ function generateAgriculturalAdvisory(message, context = {}) {
       return `🌦️ **मौसम एवं कृषि कार्य सामंजस्य:**\n\n` +
         `1. **वर्तमान स्थिति:** क्षेत्र में सामान्य तापमान और अनुकूल आर्द्रता बनी हुई है।\n` +
         `2. **बारिश की संभावना:** यदि बारिश की संभावना 50% से कम है, तो सिंचाई और खरपतवार नियंत्रण कार्य सामान्य रूप से जारी रख सकते हैं।\n` +
-        `3. **सतर्कता:** तेज धूप में दोपहर के समय खेत में कोई रासायनिक स्प्रे न करें।\n\n` +
-        `*कृषि मित्र का 7-दिवसीय मौसम पूर्वानुमान टैब में विस्तृत चार्ट देखें।*`;
+        `3. **सतर्कता:** दोपहर के समय तेज धूप में छिड़काव न करें।`;
     }
     return `🌦️ **Agro-Weather Coordination Advisory:**\n\n` +
       `1. **Current Telemetry:** Temperatures and relative humidity in your district are within standard agronomic ranges.\n` +
       `2. **Rainfall Window:** If precipitation probability is low (< 30%), routine field operations (weeding, fertigation) may proceed.\n` +
-      `3. **Field Tip:** Avoid afternoon chemical applications during peak solar intensity.\n\n` +
-      `*Check the 7-day Agricultural Forecast card for hourly temperature and rain probability details.*`;
+      `3. **Field Tip:** Avoid afternoon chemical applications during peak solar intensity.`;
   }
 
   // 7. General crop advisory
@@ -160,8 +144,8 @@ function generateAgriculturalAdvisory(message, context = {}) {
     return `🌾 **कृषि मित्र सलाह (${cropName} - ${cropStage} अवस्था):**\n\n` +
       `• **फसल स्थिति:** आपकी फसल अभी ${cropStage} चरण में है। इस समय पौधों को संतुलित नमी और कीटों से सुरक्षा की आवश्यकता होती है।\n` +
       `• **खेत का निरीक्षण:** सप्ताह में दो बार पत्तियों के नीचे देखें कि कहीं माहू (एफिड्स) या सुंडी तो नहीं लग रही।\n` +
-      `• **पोषक तत्व:** आवश्यकतानुसार सूक्ष्म पोषक तत्व या 19:19:19 घुलनशील खाद का हल्का स्प्रे लाभदायक रहेगा।\n\n` +
-      `*आप किसी विशिष्ट समस्या (जैसे पत्ती का मुड़ना, सिंचाई का समय, कीटनाशक) के बारे में बोलकर या लिखकर पूछ सकते हैं।*`;
+      `• **पोषक तत्व:** आवश्यकतानुसार 19:19:19 घुलनशील खाद का हल्का स्प्रे लाभदायक रहेगा।\n\n` +
+      `*आप किसी विशिष्ट समस्या के बारे में बोलकर या लिखकर पूछ सकते हैं।*`;
   }
   return `🌾 **KrishiMitra Advisory for ${cropName} (${cropStage}):**\n\n` +
     `• **Current Stage:** Your crop is in the ${cropStage} phase. Prioritize balanced moisture and vigilant pest scouting.\n` +
@@ -171,13 +155,15 @@ function generateAgriculturalAdvisory(message, context = {}) {
 }
 
 /**
- * Chat with AI (Tries Gemini with gemini-3.5-flash, then xAI, then ICAR engine)
+ * Chat with AI (Prioritizes xAI Grok, then Gemini, then ICAR engine)
  */
 async function chat(message, context = {}) {
   const { user, profile, farmerCrops, history, language } = context;
+  const isGreeting = /^(hi|hey|hello|namaste|namaskar|pranam|नमस्ते|प्रणाम|हैलो|हाय)/i.test((message || '').trim().toLowerCase());
 
   // Build system prompt
-  let systemPrompt = `You are KrishiMitra, an empathetic, highly knowledgeable agricultural decision assistant for Indian farmers. Respond concisely and practically in ${language === 'hi' ? 'Hindi (हिंदी)' : 'English'}. Include exact dosages per acre/liter, weather alignment, and ICAR best practices. When uncertain, advise consulting the local Krishi Vigyan Kendra (KVK). Avoid complex enterprise jargon.`;
+  let systemPrompt = `You are KrishiMitra, an empathetic, highly knowledgeable agricultural decision assistant for Indian farmers. Respond concisely and practically in ${language === 'hi' ? 'Hindi (हिंदी)' : 'English'}. Include exact dosages per acre/liter, weather alignment, and ICAR best practices. When uncertain, advise consulting the local Krishi Vigyan Kendra (KVK).
+CRITICAL RULE FOR GREETINGS: If the user simply says "hi", "hey", "hello", "namaste" or greets you, respond with a short, warm 1-2 sentence greeting asking how you can help them with their farm today. DO NOT give an unsolicited lecture or list diseases unless asked.`;
 
   if (profile && profile.state) {
     systemPrompt += `\nFarmer Context: State: ${profile.state}, District: ${profile.district || ''}, Soil: ${profile.soil_type || ''}, Land: ${profile.land_size || ''} ${profile.land_unit || 'acres'}.`;
@@ -188,50 +174,7 @@ async function chat(message, context = {}) {
     systemPrompt += `\nActive crops in field: ${cropInfo}.`;
   }
 
-  // 1. Try Google Gemini (gemini-3.5-flash) first
-  if (GEMINI_API_KEY) {
-    try {
-      const contents = [];
-      if (history && history.length > 0) {
-        for (const msg of history.slice(-4)) {
-          contents.push({
-            role: msg.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: msg.content }]
-          });
-        }
-      }
-      contents.push({
-        role: 'user',
-        parts: [{ text: `${systemPrompt}\n\nFarmer Query: ${message}` }]
-      });
-
-      const gemRes = await fetch(GEMINI_URL + `?key=${GEMINI_API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            temperature: 0.6,
-            maxOutputTokens: 800
-          }
-        })
-      });
-
-      if (gemRes.ok) {
-        const data = await gemRes.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text && text.trim().length > 0) {
-          return text.trim();
-        }
-      } else {
-        console.warn('Gemini API status:', gemRes.status, await gemRes.text());
-      }
-    } catch (err) {
-      console.warn('Gemini request error:', err.message);
-    }
-  }
-
-  // 2. Try xAI Grok if key configured
+  // 1. Try xAI Grok FIRST (as requested by user)
   if (XAI_API_KEY) {
     try {
       const messages = [{ role: 'system', content: systemPrompt }];
@@ -254,19 +197,68 @@ async function chat(message, context = {}) {
         body: JSON.stringify({
           messages,
           model: 'grok-2-latest',
-          temperature: 0.5,
-          max_tokens: 800
+          temperature: isGreeting ? 0.3 : 0.6,
+          max_tokens: 600
         })
       });
 
       if (xaiRes.ok) {
         const data = await xaiRes.json();
-        if (data.choices?.[0]?.message?.content) {
-          return data.choices[0].message.content;
+        const text = data.choices?.[0]?.message?.content;
+        if (text && text.trim().length > 0) {
+          console.log('[AI Service] Response served by xAI Grok');
+          return text.trim();
         }
+      } else {
+        const errText = await xaiRes.text();
+        console.warn(`[AI Service] xAI returned status ${xaiRes.status}: ${errText.slice(0, 120)}`);
       }
     } catch (err) {
-      console.warn('xAI request error:', err.message);
+      console.warn('[AI Service] xAI request error:', err.message);
+    }
+  }
+
+  // 2. Try Google Gemini (gemini-3.5-flash) next
+  if (GEMINI_API_KEY) {
+    try {
+      const contents = [];
+      if (history && history.length > 0) {
+        for (const msg of history.slice(-4)) {
+          contents.push({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }]
+          });
+        }
+      }
+      contents.push({
+        role: 'user',
+        parts: [{ text: `${systemPrompt}\n\nFarmer Query: ${message}` }]
+      });
+
+      const gemRes = await fetch(GEMINI_URL + `?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          generationConfig: {
+            temperature: isGreeting ? 0.3 : 0.6,
+            maxOutputTokens: 600
+          }
+        })
+      });
+
+      if (gemRes.ok) {
+        const data = await gemRes.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim().length > 0) {
+          console.log('[AI Service] Response served by Gemini 3.5 Flash');
+          return text.trim();
+        }
+      } else {
+        console.warn('Gemini API status:', gemRes.status);
+      }
+    } catch (err) {
+      console.warn('Gemini request error:', err.message);
     }
   }
 

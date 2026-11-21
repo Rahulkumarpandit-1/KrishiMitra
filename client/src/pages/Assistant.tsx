@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { assistantApi, farmerCropsApi } from '../lib/api';
 import VoiceButton from '../components/VoiceButton';
+import VoiceModal from '../components/VoiceModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Send, Plus, Trash2, Volume2, Sparkles, ChevronLeft, Menu, Bot, User, ImageIcon } from 'lucide-react';
 import type { Conversation, Message, FarmerCrop } from '../lib/types';
@@ -18,6 +19,7 @@ export default function Assistant() {
   const [cropId, setCropId] = useState<number | undefined>();
   const [showSidebar, setShowSidebar] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
   const isHi = language === 'hi';
 
@@ -103,7 +105,6 @@ export default function Assistant() {
     }
 
     window.speechSynthesis.cancel();
-    // Clean markdown stars/formatting for clean voice synthesis
     const cleanText = text.replace(/[*#_`]/g, '').replace(/https?:\/\/\S+/g, '');
     const utter = new SpeechSynthesisUtterance(cleanText);
     utter.lang = isHi ? 'hi-IN' : 'en-IN';
@@ -115,9 +116,9 @@ export default function Assistant() {
     setSpeakingId(msgId);
   };
 
-  const send = async (textToSend?: string, autoSpeak = false) => {
+  const send = async (textToSend?: string, autoSpeak = false): Promise<string> => {
     const text = textToSend || input;
-    if (!text.trim() || sending) return;
+    if (!text.trim() || sending) return '';
 
     setInput('');
     let currentConvId = activeId;
@@ -170,6 +171,7 @@ export default function Assistant() {
       if (autoSpeak) {
         speak(assistantMsg.id, content);
       }
+      return content;
     } catch (err) {
       console.error('Chat error:', err);
       const fallbackMsg: Message = {
@@ -181,6 +183,7 @@ export default function Assistant() {
         created_at: new Date().toISOString()
       };
       setMessages((prev) => [...prev, fallbackMsg]);
+      return fallbackMsg.content;
     } finally {
       setSending(false);
     }
@@ -196,7 +199,17 @@ export default function Assistant() {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] md:h-[calc(100vh-4rem)] max-w-6xl mx-auto glass-card overflow-hidden border border-emerald-500/25 shadow-2xl">
+    <div className="flex flex-col h-[calc(100vh-6rem)] md:h-[calc(100vh-4rem)] max-w-6xl mx-auto glass-card overflow-hidden border border-emerald-500/25 shadow-2xl relative">
+      {/* ChatGPT-Style Full Screen Voice Assistant Modal */}
+      <VoiceModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onSubmit={async (spokenText) => {
+          return await send(spokenText, false);
+        }}
+        initialCropName={crops.find(c => c.crop_id === cropId)?.crop_name || 'Crop'}
+      />
+
       {/* Mobile Sidebar Overlay */}
       {showSidebar && (
         <div className="fixed inset-0 z-50 flex md:hidden">
@@ -285,7 +298,7 @@ export default function Assistant() {
                 </h2>
                 <span className="text-[10px] text-lime-400 flex items-center gap-1 font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse" />
-                  Gemini AI • ICAR Agronomic Engine
+                  Gemini & Grok AI • ICAR Engine
                 </span>
               </div>
             </div>
@@ -310,7 +323,7 @@ export default function Assistant() {
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center max-w-md mx-auto my-auto py-8">
                 {/* 3D DotLottie Asset Player */}
-                <div className="relative w-28 h-28 mb-2 flex items-center justify-center">
+                <div className="relative w-28 h-28 mb-2 flex items-center justify-center cursor-pointer" onClick={() => setIsVoiceModalOpen(true)}>
                   <dotlottie-player
                     src="https://lottie.host/89534c3f-10dd-4fac-b3fb-867963f3cffc/YerGkXzK8J.lottie"
                     background="transparent"
@@ -370,7 +383,7 @@ export default function Assistant() {
                       {msg.content}
                     </p>
 
-                    {/* Visual Educational Image Card (if provided) */}
+                    {/* Visual Educational Image Card (only on relevant topics, never on greetings) */}
                     {msg.visual && (
                       <div className="mt-3 overflow-hidden rounded-2xl border border-emerald-400/40 bg-emerald-950/90 shadow-xl">
                         <img
@@ -435,18 +448,14 @@ export default function Assistant() {
             <div ref={messagesEnd} />
           </div>
 
-          {/* Persistent Floating Input Bar with Enhanced Voice Support */}
+          {/* Persistent Floating Input Bar with Enhanced Voice Modal Trigger */}
           <div className="p-3 sm:p-4 border-t border-emerald-500/20 bg-emerald-950/70 backdrop-blur-md">
             <div className="flex items-center gap-2 max-w-3xl mx-auto glass-pill p-1.5 shadow-xl border border-emerald-400/40 focus-within:border-lime-400 transition-all">
-              {/* Large Farmer-Friendly Mic */}
+              {/* Large Farmer-Friendly Mic that opens ChatGPT Voice Modal */}
               <VoiceButton
                 size="md"
                 showLabel={false}
-                onInterim={(interim) => setInput(interim)}
-                onResult={(text) => {
-                  setInput(text);
-                  send(text, true); // auto-speak response when voice queried
-                }}
+                onClick={() => setIsVoiceModalOpen(true)}
                 className="!min-h-[42px] !min-w-[42px] w-11 h-11 shadow-lg"
               />
               <input

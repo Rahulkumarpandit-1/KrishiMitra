@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Mic, MicOff, Volume2, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface VoiceButtonProps {
-  onResult: (text: string) => void;
+  onResult?: (text: string) => void;
   onInterim?: (text: string) => void;
+  onClick?: () => void;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
@@ -13,6 +14,7 @@ interface VoiceButtonProps {
 export default function VoiceButton({
   onResult,
   onInterim,
+  onClick,
   className = '',
   size = 'md',
   showLabel = false
@@ -69,7 +71,7 @@ export default function VoiceButton({
           onInterim(interimText);
         }
 
-        if (finalText) {
+        if (finalText && onResult) {
           onResult(finalText.trim());
           setListening(false);
         }
@@ -103,6 +105,11 @@ export default function VoiceButton({
   }, [isHi, onInterim, onResult]);
 
   const toggle = () => {
+    if (onClick) {
+      onClick();
+      return;
+    }
+
     if (listening) {
       stopListening();
     } else {

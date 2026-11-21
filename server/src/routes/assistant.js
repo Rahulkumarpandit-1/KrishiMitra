@@ -7,20 +7,27 @@ const router = express.Router();
 
 // Helper to match relevant agricultural visual
 function matchAgriVisual(message, responseText) {
-  const text = (message + ' ' + (responseText || '')).toLowerCase();
-  if (text.includes('yellow') || text.includes('पीली') || text.includes('chlorosis') || text.includes('rust')) {
+  const msgClean = (message || '').trim().toLowerCase();
+  
+  // Never attach image to simple greetings
+  if (/^(hi|hey|hello|namaste|namaskar|pranam|नमस्ते|प्रणाम|हैलो|हाय)$/i.test(msgClean) || msgClean.length <= 4) {
+    return null;
+  }
+
+  // Only match if user specifically asked or relevant topic is deeply discussed
+  if (msgClean.includes('yellow') || msgClean.includes('पीली') || msgClean.includes('chlorosis') || msgClean.includes('rust') || msgClean.includes('धब्बा')) {
     return AGRI_VISUALS.yellow_leaves;
   }
-  if (text.includes('irriga') || text.includes('सिंचाई') || text.includes('पानी') || text.includes('moisture')) {
+  if (msgClean.includes('irriga') || msgClean.includes('सिंचाई') || msgClean.includes('पानी') || msgClean.includes('moisture') || msgClean.includes('drip')) {
     return AGRI_VISUALS.irrigation;
   }
-  if (text.includes('spray') || text.includes('छिड़काव') || text.includes('pesticide')) {
+  if (msgClean.includes('spray') || msgClean.includes('छिड़काव') || msgClean.includes('pesticide') || msgClean.includes('कीटनाशक')) {
     return AGRI_VISUALS.pesticide_spray;
   }
-  if (text.includes('fertiliz') || text.includes('खाद') || text.includes('urea') || text.includes('यूरिया') || text.includes('dap')) {
+  if (msgClean.includes('fertiliz') || msgClean.includes('खाद') || msgClean.includes('urea') || msgClean.includes('यूरिया') || msgClean.includes('dap') || msgClean.includes('npk')) {
     return AGRI_VISUALS.fertilizer;
   }
-  if (text.includes('pest') || text.includes('कीट') || text.includes('aphid') || text.includes('borer') || text.includes('scout')) {
+  if (msgClean.includes('pest') || msgClean.includes('कीट') || msgClean.includes('aphid') || msgClean.includes('borer') || msgClean.includes('माहू') || msgClean.includes('scout') || msgClean.includes('photo') || msgClean.includes('image') || msgClean.includes('तस्वीर')) {
     return AGRI_VISUALS.pest_scouting;
   }
   return null;
@@ -160,7 +167,7 @@ router.post('/chat', requireAuth, async (req, res) => {
       db.prepare('UPDATE assistant_conversations SET title = ? WHERE id = ?').run(title, conversation_id);
     }
 
-    // Match visual educational reference
+    // Match visual educational reference (respecting greeting exclusions)
     const visual = matchAgriVisual(message, aiResponse);
 
     const assistantMsg = {
