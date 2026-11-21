@@ -2,19 +2,38 @@ const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const fs = require('fs');
 
-const dbPath = path.join(__dirname, '..', '..', 'data', 'krishimitra.db');
+const isVercel = process.env.VERCEL === '1' || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) || Boolean(process.env.LAMBDA_TASK_ROOT);
+const dbPath = isVercel
+  ? path.join('/tmp', 'krishimitra.db')
+  : path.join(__dirname, '..', '..', 'data', 'krishimitra.db');
 
 // Ensure data directory exists
 const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+  try {
+    fs.mkdirSync(dataDir, { recursive: true });
+  } catch (err) {
+    console.warn('mkdirSync dataDir:', err.message);
+  }
+}
+
+// If on Vercel and seed DB exists in repo, copy it to /tmp
+if (isVercel && !fs.existsSync(dbPath)) {
+  const repoSeedDb = path.join(__dirname, '..', '..', 'data', 'krishimitra.db');
+  if (fs.existsSync(repoSeedDb)) {
+    try {
+      fs.copyFileSync(repoSeedDb, dbPath);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 const db = new DatabaseSync(dbPath);
 
-// Enable WAL mode and foreign keys
+// Enable pragmas
 db.exec(`
-  PRAGMA journal_mode = WAL;
+  PRAGMA journal_mode = ${isVercel ? 'DELETE' : 'WAL'};
   PRAGMA foreign_keys = ON;
 `);
 
