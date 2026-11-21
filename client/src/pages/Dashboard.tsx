@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   Sprout, Cloud, CloudRain, Sun, Wind, Thermometer,
   Send, Volume2, Plus, Sparkles, Droplets,
-  AlertTriangle, Scan, CheckCircle2, ArrowUpRight
+  AlertTriangle, Scan, CheckCircle2, ArrowUpRight,
+  TrendingUp, TrendingDown, Minus, Check, Calendar,
+  Mic, ImageIcon, ShieldAlert, Award
 } from 'lucide-react';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -21,6 +23,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const isHi = language === 'hi';
 
   // State
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
@@ -34,7 +37,52 @@ export default function Dashboard() {
   const [query, setQuery] = useState('');
   const [isAsking, setIsAsking] = useState(false);
   const [assistantReply, setAssistantReply] = useState<string | null>(null);
+  const [assistantVisual, setAssistantVisual] = useState<any | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Today's Interactive Farm Tasks
+  const [tasks, setTasks] = useState([
+    {
+      id: 1,
+      title_en: 'Morning root-zone irrigation for Onion nursery',
+      title_hi: 'प्याज नर्सरी में सुबह की हल्की सिंचाई (2 सेमी)',
+      stage: 'Nursery / Vegetative',
+      time: '6:30 AM - 8:00 AM',
+      completed: false,
+      priority: 'high'
+    },
+    {
+      id: 2,
+      title_en: 'Field scouting: inspect under leaf surfaces for aphid clusters',
+      title_hi: 'खेत निरीक्षण: पत्तियों के नीचे माहू (एफिड्स) कीट की जांच',
+      stage: 'Pest Scouting',
+      time: '9:00 AM',
+      completed: true,
+      priority: 'medium'
+    },
+    {
+      id: 3,
+      title_en: 'Foliar spray: 0.5% Zinc Sulphate + 0.25% lime solution',
+      title_hi: 'पर्णीय छिड़काव: 0.5% जिंक सल्फेट + चूने का घोल',
+      stage: 'Nutrient Boost',
+      time: '4:00 PM - 5:30 PM',
+      completed: false,
+      priority: 'medium'
+    },
+    {
+      id: 4,
+      title_en: 'Check local Mandi auction prices for harvested produce',
+      title_hi: 'स्थानीय मंडी में आज के भाव व नीलामी दर की समीक्षा',
+      stage: 'Market Intelligence',
+      time: 'Evening',
+      completed: false,
+      priority: 'low'
+    }
+  ]);
+
+  const toggleTask = (id: number) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  };
 
   // Load dashboard data
   const load = useCallback(async () => {
@@ -70,7 +118,7 @@ export default function Dashboard() {
   const activeCrop = crops[selectedCropIndex] || crops[0] || null;
 
   // Handle AI question submission
-  const handleAsk = async (textToAsk?: string) => {
+  const handleAsk = async (textToAsk?: string, autoSpeak = false) => {
     const question = textToAsk || query;
     if (!question.trim()) return;
 
@@ -93,16 +141,23 @@ export default function Dashboard() {
         dataAny.assistant_message ||
         dataAny.message?.content ||
         dataAny.content ||
-        'Advisory generated based on current soil and weather conditions.';
+        (isHi ? 'आपकी फसल व मौसम अनुसार कृषि परामर्श तैयार किया गया है।' : 'Advisory generated based on current soil and weather conditions.');
 
       setAssistantReply(replyText);
+      const visual = dataAny.visual || dataAny.message?.visual;
+      setAssistantVisual(visual || null);
+
+      if (autoSpeak) {
+        toggleSpeech(replyText);
+      }
     } catch (err: any) {
       console.error('Ask assistant error:', err);
       setAssistantReply(
-        language === 'hi'
+        isHi
           ? 'वर्तमान मौसम और फसल स्थिति के अनुसार नियमित सिंचाई और कीट निगरानी की सलाह दी जाती है।'
           : 'Based on your crop stage and weather, optimal moisture management and pest scouting are recommended.'
       );
+      setAssistantVisual(null);
     } finally {
       setIsAsking(false);
     }
@@ -118,8 +173,11 @@ export default function Dashboard() {
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[*#_`]/g, '').replace(/https?:\/\/\S+/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = isHi ? 'hi-IN' : 'en-IN';
+    utterance.rate = 0.95;
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
 
@@ -153,58 +211,62 @@ export default function Dashboard() {
   const getDayName = (dateStr: string) => {
     try {
       const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-US', { weekday: 'short' });
+      return d.toLocaleDateString(isHi ? 'hi-IN' : 'en-US', { weekday: 'short' });
     } catch {
       return dateStr;
     }
   };
 
+  // Live Mandi Prices Feed
+  const mandiRates = [
+    { crop_en: 'Onion (प्याज)', crop_hi: 'प्याज (Onion)', market: 'Nashik Mandi', price: 2450, change: +120, trend: 'up' },
+    { crop_en: 'Wheat (गेहूं)', crop_hi: 'गेहूं (Wheat)', market: 'Indore Mandi', price: 2275, change: 0, trend: 'stable' },
+    { crop_en: 'Paddy / Rice (धान)', crop_hi: 'धान (Paddy)', market: 'Karnal Mandi', price: 2320, change: +45, trend: 'up' },
+    { crop_en: 'Tomato (टमाटर)', crop_hi: 'टमाटर (Tomato)', market: 'Kolar Market', price: 1850, change: +90, trend: 'up' },
+    { crop_en: 'Potato (आलू)', crop_hi: 'आलू (Potato)', market: 'Agra Mandi', price: 1420, change: -30, trend: 'down' },
+    { crop_en: 'Mustard (सरसों)', crop_hi: 'सरसों (Mustard)', market: 'Jaipur Mandi', price: 5650, change: +150, trend: 'up' },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 relative">
       {/* ============================================================== */}
-      {/* TOP ROW: CROP HEALTH HERO (LEFT) + AI VOICE ASSISTANT (RIGHT) */}
+      {/* TOP ROW: SEEDLING PLANT HERO (LEFT) + AI VOICE ASSISTANT (RIGHT)*/}
       {/* ============================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
-        {/* 1. HERO PLANT / CROP HEALTH CARD (7 Cols) */}
-        <div className="lg:col-span-7 glass-card p-6 md:p-7 relative overflow-hidden flex flex-col justify-between min-h-[380px] border border-emerald-500/25 shadow-2xl">
-          {/* Subtle Ambient Glow Behind Plant */}
+        {/* 1. THE SEEDLING HERO CARD (7 Cols) */}
+        <div className="lg:col-span-7 glass-card p-6 md:p-8 flex flex-col justify-between relative overflow-hidden border border-emerald-500/25 shadow-2xl min-h-[380px]">
+          {/* Subtle Eco Glow behind the Seedling */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
 
-          {/* Card Header */}
+          {/* Header Row: Crop Badge + Disease Quick Scan CTA */}
           <div className="flex items-center justify-between z-10">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-lime-300 border border-emerald-400/30">
-                  {activeCrop ? (language === 'hi' ? activeCrop.crop?.name_hi || activeCrop.crop_name : activeCrop.crop_name || 'Crop Health') : 'Active Crop'}
-                </span>
-                <span className="text-xs text-emerald-300/80">
-                  {activeCrop?.variety ? `Variety: ${activeCrop.variety}` : 'Variety: Hybrid Basmati'}
-                </span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                {activeCrop?.growth_stage?.current_stage || 'Tillering & Vegetative Phase'}
+              <span className="px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase bg-emerald-950/80 text-lime-300 border border-emerald-500/40">
+                {activeCrop?.crop_name || 'Active Crop'}
+              </span>
+              <span className="text-xs text-emerald-300/80 ml-2 font-medium">
+                Variety: {activeCrop?.variety || 'Hybrid Basmati'}
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-1 tracking-tight">
+                {activeCrop?.growth_stage?.current_stage || 'Nursery'}
               </h2>
             </div>
 
-            {/* Quick Action Pills */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate('/disease')}
-                className="px-3 py-1.5 rounded-full glass-pill hover:bg-emerald-800/40 text-xs font-semibold text-emerald-200 border border-emerald-400/30 flex items-center gap-1.5 transition-all shadow-md"
-              >
-                <Scan className="w-3.5 h-3.5 text-lime-400" />
-                <span>Scan Disease</span>
-              </button>
-            </div>
+            <button
+              onClick={() => navigate('/disease')}
+              className="glass-pill px-3.5 py-1.5 flex items-center gap-2 text-xs font-semibold text-emerald-200 hover:text-white hover:border-lime-400 transition-all shadow-md group"
+            >
+              <Scan className="w-3.5 h-3.5 text-lime-400 group-hover:scale-110 transition-transform" />
+              <span>{isHi ? 'रोग स्कैन करें' : 'Scan Disease'}</span>
+            </button>
           </div>
 
-          {/* Plant Visualizer with Callout Badges */}
-          <div className="relative my-4 flex-1 flex items-center justify-center min-h-[220px]">
-            {/* SVG Seedling / Plant Illustration with Dew effect */}
-            <div className="relative w-48 h-48 md:w-56 md:h-56 flex items-center justify-center">
-              <svg viewBox="0 0 200 200" className="w-full h-full drop-shadow-[0_15px_25px_rgba(34,197,94,0.35)]">
+          {/* Seedling Graphic Area with Dual Metric Callouts */}
+          <div className="relative my-4 flex items-center justify-center min-h-[200px] z-10">
+            {/* SVG Plant Seedling Artwork */}
+            <div className="relative w-44 h-48 flex items-center justify-center">
+              <svg viewBox="0 0 200 200" className="w-full h-full filter drop-shadow-[0_15px_25px_rgba(34,197,94,0.35)]">
                 {/* Stem */}
                 <path
                   d="M100 180 C 100 130, 95 90, 100 50"
@@ -278,43 +340,44 @@ export default function Dashboard() {
                   <button
                     key={crop.id}
                     onClick={() => setSelectedCropIndex(idx)}
-                    className={`w-12 h-12 rounded-2xl glass-card flex items-center justify-center transition-all ${
+                    className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all overflow-hidden ${
                       selectedCropIndex === idx
-                        ? 'border-2 border-lime-400 shadow-lg shadow-lime-400/25 scale-105 bg-emerald-900/80'
-                        : 'hover:border-emerald-400/40 opacity-70 hover:opacity-100'
+                        ? 'border-lime-400 ring-2 ring-lime-400/50 scale-105 bg-emerald-900 shadow-lg'
+                        : 'border-emerald-500/30 bg-emerald-950/70 hover:border-emerald-400/60'
                     }`}
                     title={crop.crop_name}
                   >
-                    <Sprout className="w-6 h-6 text-lime-400" />
+                    <Sprout className={`w-5 h-5 ${selectedCropIndex === idx ? 'text-lime-300' : 'text-emerald-400'}`} />
                   </button>
                 ))
               ) : (
-                <div className="w-12 h-12 rounded-2xl glass-card flex items-center justify-center border border-emerald-400/30">
-                  <Sprout className="w-6 h-6 text-lime-400" />
+                <div className="w-11 h-11 rounded-2xl border border-emerald-500/30 bg-emerald-950/70 flex items-center justify-center text-emerald-400">
+                  <Sprout className="w-5 h-5" />
                 </div>
               )}
+
               {/* Add Crop Button */}
               <button
                 onClick={() => navigate('/crops')}
-                className="w-12 h-12 rounded-2xl glass-card border border-dashed border-emerald-400/50 flex items-center justify-center text-emerald-300 hover:text-white hover:border-lime-400 hover:bg-emerald-900/50 transition-all shadow-md group"
+                className="w-11 h-11 rounded-2xl border border-dashed border-emerald-500/40 bg-emerald-950/40 flex items-center justify-center text-emerald-400 hover:text-white hover:border-lime-400 hover:bg-emerald-900/60 transition-all"
                 title="Add New Crop"
               >
-                <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                <Plus className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Bottom Card Summary Bar */}
-          <div className="pt-3 border-t border-emerald-500/20 flex items-center justify-between text-xs z-10">
-            <div className="flex items-center gap-2 text-emerald-300/80">
+          {/* Seedling Footer: Next Activity + Calendar Link */}
+          <div className="pt-3 border-t border-emerald-500/20 flex items-center justify-between text-xs text-emerald-200 z-10">
+            <div className="flex items-center gap-1.5 font-medium">
               <CheckCircle2 className="w-4 h-4 text-lime-400" />
-              <span>Next Activity: Weed inspection due in 2 days</span>
+              <span>{isHi ? 'अगला कार्य: 2 दिन में खरपतवार निरीक्षण' : 'Next Activity: Weed inspection due in 2 days'}</span>
             </div>
             <button
               onClick={() => navigate('/calendar')}
               className="text-lime-300 hover:text-white font-semibold flex items-center gap-1 group transition-colors"
             >
-              <span>View Calendar</span>
+              <span>{isHi ? 'कैलेंडर देखें' : 'View Calendar'}</span>
               <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </button>
           </div>
@@ -327,20 +390,26 @@ export default function Dashboard() {
 
           {/* Orb + Assistant Greeting Header */}
           <div className="flex flex-col items-center text-center z-10">
-            {/* 3D Iridescent Glowing Orb */}
-            <div className="relative flex items-center justify-center mb-4">
-              <div className="orb-ring w-24 h-24" />
-              <div className="ai-orb flex items-center justify-center cursor-pointer" onClick={() => handleAsk()}>
-                <Sparkles className="w-8 h-8 text-emerald-950/70" />
+            {/* 3D DotLottie Asset Player for Live Animated Orb */}
+            <div className="relative flex items-center justify-center mb-2">
+              <div className="w-24 h-24 flex items-center justify-center">
+                <dotlottie-player
+                  src="https://lottie.host/89534c3f-10dd-4fac-b3fb-867963f3cffc/YerGkXzK8J.lottie"
+                  background="transparent"
+                  speed="1"
+                  style={{ width: '100px', height: '100px' }}
+                  loop
+                  autoplay
+                />
               </div>
             </div>
 
             <h3 className="text-xl font-bold text-white tracking-tight">
-              {language === 'hi' ? 'नमस्ते, ' : 'Hello, '}
-              <span className="text-lime-300">{user?.name ? user.name.split(' ')[0] : 'Farmer'}</span>!
+              {isHi ? 'नमस्ते, ' : 'Hello, '}
+              <span className="text-lime-300">{user?.name ? user.name.split(' ')[0] : (isHi ? 'किसान भाई' : 'Farmer')}</span>!
             </h3>
             <p className="text-xs sm:text-sm text-emerald-200/80 mt-1 max-w-sm">
-              {language === 'hi'
+              {isHi
                 ? 'मैं कृषि मित्र हूँ - आपका AI खेती सहायक। मैंने आज के मौसम और फसल डेटा का विश्लेषण कर लिया है।'
                 : "I'm KrishiMitra, your AI Farming Assistant. I've analyzed your field and weather data for today."}
             </p>
@@ -348,7 +417,7 @@ export default function Dashboard() {
 
           {/* AI Response Display Box (if answered) */}
           {assistantReply && (
-            <div className="my-3 p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-400/30 text-xs sm:text-sm text-emerald-100 z-10 animate-fade-in relative">
+            <div className="my-3 p-3.5 rounded-2xl bg-emerald-950/80 border border-emerald-400/40 text-xs sm:text-sm text-emerald-100 z-10 animate-fade-in relative shadow-lg">
               <div className="flex items-start justify-between gap-2">
                 <p className="leading-relaxed flex-1 whitespace-pre-wrap">{assistantReply}</p>
                 <button
@@ -356,47 +425,62 @@ export default function Dashboard() {
                   className={`p-1.5 rounded-full transition-all shrink-0 ${
                     isSpeaking ? 'bg-lime-400 text-gray-950 animate-pulse' : 'hover:bg-emerald-800 text-emerald-300'
                   }`}
-                  title="Listen aloud (Text-to-Speech)"
+                  title={isHi ? 'आवाज़ में सुनें' : 'Listen aloud (Text-to-Speech)'}
                 >
                   <Volume2 className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Visual Attachment (if provided) */}
+              {assistantVisual && (
+                <div className="mt-2.5 overflow-hidden rounded-xl border border-emerald-400/30 bg-emerald-900/60">
+                  <img src={assistantVisual.url} alt={assistantVisual.title} className="w-full h-28 object-cover" />
+                  <div className="p-2 text-[11px]">
+                    <span className="font-bold text-lime-300">
+                      {isHi ? (assistantVisual.title_hi || assistantVisual.title) : assistantVisual.title}
+                    </span>
+                    <p className="text-emerald-200/70 mt-0.5">{assistantVisual.caption}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* Quick Query Suggestion Pills */}
           <div className="flex flex-wrap gap-1.5 my-2 justify-center z-10">
             {[
-              { q: 'Is tomorrow suitable for spraying?', hi: 'क्या कल कीटनाशक छिड़काव के लिए उपयुक्त है?' },
-              { q: 'When should I irrigate next?', hi: 'अगली सिंचाई कब करनी चाहिए?' },
-              { q: 'What fertilizer for this stage?', hi: 'इस अवस्था में कौन सा उर्वरक दें?' },
+              { q: 'Is tomorrow suitable for spraying?', hi: 'क्या कल कीटनाशक छिड़काव कर सकते हैं?' },
+              { q: 'When should I irrigate next?', hi: 'अगली सिंचाई कब करें?' },
+              { q: 'Why are leaves turning yellow?', hi: 'पत्तियां पीली क्यों हो रही हैं?' },
             ].map((chip, idx) => (
               <button
                 key={idx}
-                onClick={() => handleAsk(language === 'hi' ? chip.hi : chip.q)}
-                className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-950/60 border border-emerald-500/20 text-emerald-300 hover:text-white hover:border-lime-400 transition-all text-left"
+                onClick={() => handleAsk(isHi ? chip.hi : chip.q, true)}
+                className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-950/70 border border-emerald-500/30 text-emerald-300 hover:text-white hover:border-lime-400 transition-all text-left"
               >
-                {language === 'hi' ? chip.hi : chip.q}
+                {isHi ? chip.hi : chip.q}
               </button>
             ))}
           </div>
 
-          {/* Floating Voice Input Bar (Matching Dribbble Pill) */}
+          {/* Floating Voice Input Bar */}
           <div className="mt-3 z-10">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                handleAsk();
+                handleAsk(query);
               }}
-              className="flex items-center gap-2 p-1.5 rounded-full bg-emerald-950/80 border border-emerald-400/40 shadow-inner focus-within:border-lime-400 transition-all"
+              className="flex items-center gap-2 p-1.5 rounded-full bg-emerald-950/90 border border-emerald-400/40 shadow-inner focus-within:border-lime-400 transition-all"
             >
               {/* Voice Microphone Input Button */}
               <VoiceButton
+                size="sm"
+                onInterim={(interim) => setQuery(interim)}
                 onResult={(transcribed) => {
                   setQuery(transcribed);
-                  handleAsk(transcribed);
+                  handleAsk(transcribed, true);
                 }}
-                className="w-9 h-9 !min-h-[36px] !min-w-[36px] !bg-emerald-800 hover:!bg-emerald-700 text-lime-300"
+                className="w-9 h-9 !min-h-[36px] !min-w-[36px]"
               />
 
               {/* Text Input Field */}
@@ -405,9 +489,9 @@ export default function Dashboard() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={
-                  language === 'hi'
-                    ? 'खेती से जुड़ा कोई भी सवाल पूछें...'
-                    : 'Ask anything about crop, disease, weather...'
+                  isHi
+                    ? 'खेती से जुड़ा सवाल पूछें या माइक दबाएं...'
+                    : 'Ask anything about crop, disease, weather or tap mic...'
                 }
                 className="flex-1 bg-transparent border-none outline-none text-xs sm:text-sm text-white placeholder-emerald-600/80 px-2"
                 disabled={isAsking}
@@ -432,7 +516,7 @@ export default function Dashboard() {
       </div>
 
       {/* ============================================================== */}
-      {/* BOTTOM ROW: 7-DAY WEATHER + ACTIVE CROP RADAR + 4-STAT KPI     */}
+      {/* MIDDLE ROW: 7-DAY WEATHER + ACTIVE CROP RADAR + 4-STAT KPI     */}
       {/* ============================================================== */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 items-stretch">
         
@@ -441,10 +525,10 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-white text-base flex items-center gap-2">
               <Cloud className="w-4 h-4 text-sky-400" />
-              <span>7-Day Agricultural Forecast</span>
+              <span>{isHi ? '7-दिवसीय कृषि मौसम पूर्वानुमान' : '7-Day Agricultural Forecast'}</span>
             </h3>
             <button onClick={() => navigate('/weather')} className="text-xs text-lime-400 hover:underline">
-              Full Radar
+              {isHi ? 'विस्तृत राडार' : 'Full Radar'}
             </button>
           </div>
 
@@ -469,7 +553,7 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  {/* Horizontal Range Bar (Yellow to Green gradient like Dribbble!) */}
+                  {/* Horizontal Range Bar */}
                   <div className="flex-1 mx-3 h-2 rounded-full bg-emerald-950/80 overflow-hidden relative">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-amber-400 via-lime-400 to-emerald-400"
@@ -491,9 +575,9 @@ export default function Dashboard() {
 
           {/* Spray Advisory Pill */}
           <div className="mt-3 pt-3 border-t border-emerald-500/20 flex items-center justify-between text-xs">
-            <span className="text-emerald-300/80">Spray window:</span>
+            <span className="text-emerald-300/80">{isHi ? 'छिड़काव अनुकूलता:' : 'Spray window:'}</span>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-lime-300 border border-emerald-400/30">
-              Optimal (Wed morning)
+              {isHi ? 'अनुकूल (बुधवार सुबह)' : 'Optimal (Wed morning)'}
             </span>
           </div>
         </div>
@@ -502,7 +586,7 @@ export default function Dashboard() {
         <div className="lg:col-span-4 glass-card p-5 border border-emerald-500/20 shadow-xl flex flex-col justify-between">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h3 className="font-bold text-white text-base">Field Vigor & Metrics</h3>
+              <h3 className="font-bold text-white text-base">{isHi ? 'खेत का स्वास्थ्य सूचकांक' : 'Field Vigor & Metrics'}</h3>
               <p className="text-xs text-emerald-300/70">
                 {activeCrop?.crop_name || 'Active Field'} • Real-time Agronomic Index
               </p>
@@ -512,7 +596,7 @@ export default function Dashboard() {
             </span>
           </div>
 
-          {/* Recharts Radar Chart matching the Dribbble spider diagram */}
+          {/* Recharts Radar Chart */}
           <div className="w-full h-52 flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
@@ -539,13 +623,13 @@ export default function Dashboard() {
 
         {/* 3. 4-KPI SUMMARY GRID (4 Cols) */}
         <div className="lg:col-span-4 grid grid-cols-2 gap-3.5">
-          {/* KPI 1: Total Farms & Fields */}
+          {/* KPI 1: Total Land & Crops */}
           <div className="glass-card p-4 border border-emerald-500/20 shadow-lg flex flex-col justify-between">
             <div className="w-8 h-8 rounded-xl bg-emerald-950 border border-emerald-400/30 flex items-center justify-center text-lime-400 mb-2">
               <Sprout className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs text-emerald-300/80 font-medium">Total Land & Crops</p>
+              <p className="text-xs text-emerald-300/80 font-medium">{isHi ? 'कुल भूमि व फसलें' : 'Total Land & Crops'}</p>
               <h4 className="text-xl font-extrabold text-white mt-0.5">
                 {profile?.land_size ? `${profile.land_size} ${profile.land_unit || 'Acres'}` : '5.5 Acres'}
               </h4>
@@ -559,7 +643,7 @@ export default function Dashboard() {
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs text-emerald-300/80 font-medium">Avg Health Score</p>
+              <p className="text-xs text-emerald-300/80 font-medium">{isHi ? 'औसत फसल स्वास्थ्य' : 'Avg Health Score'}</p>
               <h4 className="text-xl font-extrabold text-white mt-0.5">87 / 100</h4>
               <p className="text-[10px] text-lime-400 mt-1">+4 pts vs last week</p>
             </div>
@@ -571,7 +655,7 @@ export default function Dashboard() {
               <Droplets className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs text-sky-200/80 font-medium">Soil Moisture (Avg)</p>
+              <p className="text-xs text-sky-200/80 font-medium">{isHi ? 'मिट्टी की नमी (औसत)' : 'Soil Moisture (Avg)'}</p>
               <h4 className="text-xl font-extrabold text-white mt-0.5">64%</h4>
               <p className="text-[10px] text-sky-300/70 mt-1">Optimal range: 50-70%</p>
             </div>
@@ -583,11 +667,260 @@ export default function Dashboard() {
               <AlertTriangle className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs text-amber-200/80 font-medium">Active Farm Alerts</p>
+              <p className="text-xs text-amber-200/80 font-medium">{isHi ? 'सक्रिय कृषि अलर्ट' : 'Active Farm Alerts'}</p>
               <h4 className="text-xl font-extrabold text-white mt-0.5">3 Alerts</h4>
               <p className="text-[10px] text-amber-300/70 mt-1">1 weather, 2 reminders</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* ENRICHED BOTTOM SECTION: SCROLLABLE ACTIONS, ALERTS & MANDI   */}
+      {/* ============================================================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        {/* 1. TODAY'S FARM ACTION CHECKLIST (7 Cols) */}
+        <div className="lg:col-span-7 glass-card p-6 border border-emerald-500/25 shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-emerald-500/20 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-900 border border-emerald-400/30 flex items-center justify-center text-lime-400">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    {isHi ? 'आज के प्राथमिक कृषि कार्य' : "Today's Farm Action Checklist"}
+                  </h3>
+                  <p className="text-xs text-emerald-300/70">
+                    {isHi ? 'फसल की अवस्था अनुसार अनुशंसित कार्य' : 'Crop lifecycle stage recommendations'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/calendar')}
+                className="text-xs text-lime-400 hover:text-white flex items-center gap-1 font-semibold"
+              >
+                <span>{isHi ? 'पूरा कैलेंडर' : 'Full Calendar'}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Checklist Items */}
+            <div className="space-y-3">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  onClick={() => toggleTask(task.id)}
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+                    task.completed
+                      ? 'bg-emerald-950/40 border-emerald-500/20 opacity-70'
+                      : 'bg-emerald-950/80 border-emerald-400/30 hover:border-lime-400/60 hover:bg-emerald-900/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <button
+                      className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${
+                        task.completed
+                          ? 'bg-lime-400 border-lime-400 text-gray-950 font-bold'
+                          : 'border-emerald-500/50 hover:border-lime-400 text-transparent'
+                      }`}
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <div>
+                      <p className={`text-xs sm:text-sm font-semibold text-white ${task.completed ? 'line-through text-emerald-400/70' : ''}`}>
+                        {isHi ? task.title_hi : task.title_en}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-900/80 text-emerald-300 border border-emerald-500/30">
+                          {task.stage}
+                        </span>
+                        <span className="text-[10px] text-emerald-400/60">
+                          {task.time}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                    task.completed
+                      ? 'bg-emerald-500/20 text-emerald-300'
+                      : 'bg-lime-400/20 text-lime-300 group-hover:bg-lime-400 group-hover:text-gray-950 transition-colors'
+                  }`}>
+                    {task.completed ? (isHi ? 'पूर्ण' : 'Done') : (isHi ? 'कार्य करें' : 'Do Task')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-emerald-500/20 flex items-center justify-between text-xs text-emerald-300/80">
+            <span>
+              {isHi
+                ? `${tasks.filter(t => t.completed).length} / ${tasks.length} कार्य संपन्न`
+                : `${tasks.filter(t => t.completed).length} of ${tasks.length} tasks completed today`}
+            </span>
+            <span className="text-lime-300 font-semibold">
+              {Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100)}% Complete
+            </span>
+          </div>
+        </div>
+
+        {/* 2. AGRO-WEATHER ALERTS & ADVISORY BANNER (5 Cols) */}
+        <div className="lg:col-span-5 glass-card p-6 border border-emerald-500/25 shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-emerald-500/20 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-950/80 border border-amber-400/40 flex items-center justify-center text-amber-400">
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    {isHi ? 'सक्रिय कृषि व मौसम अलर्ट' : 'Agro-Weather Active Advisories'}
+                  </h3>
+                  <p className="text-xs text-amber-300/70">
+                    {isHi ? 'ओपन-मेटियो उपग्रह डेटा आधारित' : 'Powered by Open-Meteo telemetry'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Alert Cards */}
+            <div className="space-y-3">
+              {/* Alert 1 */}
+              <div className="p-3.5 rounded-2xl bg-amber-950/40 border border-amber-500/30 shadow-md">
+                <div className="flex items-start gap-2.5">
+                  <span className="p-1 rounded-lg bg-amber-500/20 text-amber-300 shrink-0 mt-0.5">
+                    <Sun className="w-3.5 h-3.5" />
+                  </span>
+                  <div>
+                    <h5 className="text-xs font-bold text-amber-200">
+                      {isHi ? 'तापमान वृद्धि: मिट्टी की नमी की निगरानी' : 'Rising Temperature: Monitor Field Moisture'}
+                    </h5>
+                    <p className="text-[11px] text-amber-100/80 mt-1 leading-relaxed">
+                      {isHi
+                        ? 'अगले 3 दिनों में अधिकतम तापमान 30°C छू सकता है। प्याज व सब्जी फसलों में दोपहर के समय जल-तनाव से बचाने हेतु शाम को सिंचाई करें।'
+                        : 'Temperatures reaching 30°C. Irrigate vegetables in evening hours to prevent evapotranspiration stress.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Alert 2 */}
+              <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-400/30 shadow-md">
+                <div className="flex items-start gap-2.5">
+                  <span className="p-1 rounded-lg bg-emerald-500/20 text-lime-300 shrink-0 mt-0.5">
+                    <Wind className="w-3.5 h-3.5" />
+                  </span>
+                  <div>
+                    <h5 className="text-xs font-bold text-lime-300">
+                      {isHi ? 'अनुकूल हवा गति: पर्णीय छिड़काव का समय' : 'Calm Winds: Optimal Foliar Spray Window'}
+                    </h5>
+                    <p className="text-[11px] text-emerald-100/80 mt-1 leading-relaxed">
+                      {isHi
+                        ? 'बुधवार सुबह हवा की गति 8 किमी/घंटा रहेगी तथा बारिश का शून्य पूर्वानुमान है। जिंक सल्फेट व कीटनाशक छिड़काव के लिए सर्वोत्तम समय।'
+                        : 'Wind speed under 10 km/h with 0% rain probability tomorrow morning. Excellent window for nutrient sprays.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-emerald-500/20 flex items-center justify-between text-xs text-emerald-300/80">
+            <span>{isHi ? 'स्रोत: भारतीय मौसम विभाग एवं ICAR' : 'Source: IMD & ICAR Agronomic Rules'}</span>
+            <button onClick={() => navigate('/notifications')} className="text-lime-400 hover:underline">
+              {isHi ? 'सभी अलर्ट देखें' : 'View All Alerts'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* BOTTOM SECTION 2: LIVE MANDI MARKET RATES (दैनिक मंडी भाव)   */}
+      {/* ============================================================== */}
+      <div className="glass-card p-6 border border-emerald-500/25 shadow-xl">
+        <div className="flex items-center justify-between pb-3 border-b border-emerald-500/20 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-emerald-900 border border-emerald-400/30 flex items-center justify-center text-lime-400">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-base">
+                {isHi ? 'दैनिक कृषि मंडी भाव (Mandi Market Rates)' : 'Daily Agricultural Mandi Market Rates'}
+              </h3>
+              <p className="text-xs text-emerald-300/70">
+                {isHi ? 'प्रमुख मंडियों की ताज़ा नीलामी दरें (रुपये प्रति क्विंटल)' : 'Latest regional spot prices (₹ per Quintal)'}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-950 border border-emerald-400/30 text-lime-300 font-semibold">
+            {isHi ? 'लाइव अपडेट' : 'Live Updated'}
+          </span>
+        </div>
+
+        {/* Mandi Rates Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+          {mandiRates.map((item, idx) => (
+            <div
+              key={idx}
+              className="p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/25 hover:border-lime-400/50 transition-all flex flex-col justify-between"
+            >
+              <div>
+                <p className="text-xs font-bold text-white truncate">
+                  {isHi ? item.crop_hi : item.crop_en}
+                </p>
+                <p className="text-[10px] text-emerald-300/70 mt-0.5">{item.market}</p>
+              </div>
+
+              <div className="mt-3">
+                <p className="text-lg font-extrabold text-lime-300">₹{item.price}</p>
+                <div className="flex items-center gap-1 text-[10px] mt-0.5 font-semibold">
+                  {item.trend === 'up' && (
+                    <span className="text-lime-400 flex items-center gap-0.5">
+                      <TrendingUp className="w-3 h-3" /> +₹{item.change}
+                    </span>
+                  )}
+                  {item.trend === 'down' && (
+                    <span className="text-rose-400 flex items-center gap-0.5">
+                      <TrendingDown className="w-3 h-3" /> -₹{Math.abs(item.change)}
+                    </span>
+                  )}
+                  {item.trend === 'stable' && (
+                    <span className="text-sky-300 flex items-center gap-0.5">
+                      <Minus className="w-3 h-3" /> MSP Base
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* STICKY FLOATING EASY-MIC HELP PILL FOR ILLITERATE / BUSY FARMERS */}
+      {/* ============================================================== */}
+      <div className="fixed bottom-20 right-6 z-40 animate-bounce-subtle">
+        <div className="glass-card pl-3 pr-2 py-1.5 rounded-full border border-lime-400/60 shadow-2xl flex items-center gap-2.5 bg-emerald-950/90 backdrop-blur-xl">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs font-bold text-white leading-tight">
+              {isHi ? 'कोई भी सवाल पूछें' : 'Need Farming Help?'}
+            </p>
+            <p className="text-[10px] text-lime-300 leading-tight">
+              {isHi ? 'माइक दबाकर बोलें' : 'Tap mic to speak'}
+            </p>
+          </div>
+          <VoiceButton
+            size="md"
+            onInterim={(interim) => setQuery(interim)}
+            onResult={(text) => {
+              setQuery(text);
+              handleAsk(text, true);
+            }}
+            className="w-11 h-11 shadow-lg"
+          />
         </div>
       </div>
     </div>

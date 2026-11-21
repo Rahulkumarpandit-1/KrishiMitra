@@ -1,9 +1,30 @@
 const express = require('express');
 const { db } = require('../config/db');
 const { requireAuth } = require('../middleware/auth');
-const { chat } = require('../services/ai');
+const { chat, AGRI_VISUALS } = require('../services/ai');
 
 const router = express.Router();
+
+// Helper to match relevant agricultural visual
+function matchAgriVisual(message, responseText) {
+  const text = (message + ' ' + (responseText || '')).toLowerCase();
+  if (text.includes('yellow') || text.includes('पीली') || text.includes('chlorosis') || text.includes('rust')) {
+    return AGRI_VISUALS.yellow_leaves;
+  }
+  if (text.includes('irriga') || text.includes('सिंचाई') || text.includes('पानी') || text.includes('moisture')) {
+    return AGRI_VISUALS.irrigation;
+  }
+  if (text.includes('spray') || text.includes('छिड़काव') || text.includes('pesticide')) {
+    return AGRI_VISUALS.pesticide_spray;
+  }
+  if (text.includes('fertiliz') || text.includes('खाद') || text.includes('urea') || text.includes('यूरिया') || text.includes('dap')) {
+    return AGRI_VISUALS.fertilizer;
+  }
+  if (text.includes('pest') || text.includes('कीट') || text.includes('aphid') || text.includes('borer') || text.includes('scout')) {
+    return AGRI_VISUALS.pest_scouting;
+  }
+  return null;
+}
 
 // GET /api/assistant/conversations
 router.get('/conversations', requireAuth, (req, res) => {
@@ -50,9 +71,18 @@ router.get('/conversations/:id', requireAuth, (req, res) => {
       return res.status(404).json({ success: false, error: 'Conversation not found' });
     }
 
-    const messages = db.prepare(
+    const rawMessages = db.prepare(
       'SELECT * FROM assistant_messages WHERE conversation_id = ? ORDER BY created_at ASC'
     ).all(id);
+
+    // Decorate messages with visual aids if applicable
+    const messages = rawMessages.map(m => {
+      if (m.role === 'assistant') {
+        const visual = matchAgriVisual('', m.content);
+        return visual ? { ...m, visual } : m;
+      }
+      return m;
+    });
 
     res.json({ success: true, data: { conversation, messages } });
   } catch (error) {
@@ -109,7 +139,7 @@ router.post('/chat', requireAuth, async (req, res) => {
     `).all(req.user.id);
 
     const history = db.prepare(
-      'SELECT role, content FROM assistant_messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 20'
+      'SELECT role, content FROM assistant_messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 10'
     ).all(conversation_id);
 
     // Get AI response
@@ -130,11 +160,15 @@ router.post('/chat', requireAuth, async (req, res) => {
       db.prepare('UPDATE assistant_conversations SET title = ? WHERE id = ?').run(title, conversation_id);
     }
 
+    // Match visual educational reference
+    const visual = matchAgriVisual(message, aiResponse);
+
     const assistantMsg = {
       id: Date.now(),
       conversation_id,
       role: 'assistant',
       content: aiResponse,
+      visual,
       created_at: new Date().toISOString()
     };
 
@@ -143,6 +177,7 @@ router.post('/chat', requireAuth, async (req, res) => {
       data: {
         user_message: message,
         assistant_message: aiResponse,
+        visual,
         message: assistantMsg
       }
     });

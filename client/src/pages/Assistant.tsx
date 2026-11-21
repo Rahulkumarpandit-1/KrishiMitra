@@ -3,7 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { assistantApi, farmerCropsApi } from '../lib/api';
 import VoiceButton from '../components/VoiceButton';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Send, Plus, Trash2, Volume2, Sparkles, ChevronLeft, Menu, Bot, User, CheckCircle2 } from 'lucide-react';
+import { Send, Plus, Trash2, Volume2, Sparkles, ChevronLeft, Menu, Bot, User, ImageIcon } from 'lucide-react';
 import type { Conversation, Message, FarmerCrop } from '../lib/types';
 
 export default function Assistant() {
@@ -19,6 +19,7 @@ export default function Assistant() {
   const [showSidebar, setShowSidebar] = useState(false);
   const [speakingId, setSpeakingId] = useState<number | null>(null);
   const messagesEnd = useRef<HTMLDivElement>(null);
+  const isHi = language === 'hi';
 
   const loadConversations = useCallback(async () => {
     try {
@@ -64,7 +65,7 @@ export default function Assistant() {
 
   const newConversation = async () => {
     try {
-      const title = language === 'hi' ? 'नई कृषि चर्चा' : 'New Farm Advisory';
+      const title = isHi ? 'नई कृषि चर्चा' : 'New Farm Advisory';
       const res = await assistantApi.createConversation(title, cropId);
       const conv = res.data.conversation || (res.data as any);
       setConversations([conv, ...conversations]);
@@ -92,7 +93,29 @@ export default function Assistant() {
     }
   };
 
-  const send = async (textToSend?: string) => {
+  const speak = (msgId: number, text: string) => {
+    if (!window.speechSynthesis) return;
+
+    if (speakingId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    // Clean markdown stars/formatting for clean voice synthesis
+    const cleanText = text.replace(/[*#_`]/g, '').replace(/https?:\/\/\S+/g, '');
+    const utter = new SpeechSynthesisUtterance(cleanText);
+    utter.lang = isHi ? 'hi-IN' : 'en-IN';
+    utter.rate = 0.95;
+    utter.onend = () => setSpeakingId(null);
+    utter.onerror = () => setSpeakingId(null);
+
+    window.speechSynthesis.speak(utter);
+    setSpeakingId(msgId);
+  };
+
+  const send = async (textToSend?: string, autoSpeak = false) => {
     const text = textToSend || input;
     if (!text.trim() || sending) return;
 
@@ -130,21 +153,29 @@ export default function Assistant() {
         dataAny.assistant_message ||
         dataAny.message?.content ||
         dataAny.content ||
-        'Advisory generated for your crop and weather conditions.';
+        (isHi ? 'आपकी फसल व मौसम अनुसार कृषि परामर्श तैयार किया गया है।' : 'Advisory generated for your crop and weather conditions.');
 
-      const assistantMsg: Message = {
+      const visual = dataAny.visual || dataAny.message?.visual;
+
+      const assistantMsg: any = {
         id: Date.now() + 1,
         role: 'assistant',
         content,
+        visual,
         created_at: new Date().toISOString()
       };
       setMessages((prev) => [...prev, assistantMsg]);
+
+      // If user queried by voice, auto-speak response aloud
+      if (autoSpeak) {
+        speak(assistantMsg.id, content);
+      }
     } catch (err) {
       console.error('Chat error:', err);
       const fallbackMsg: Message = {
         id: Date.now() + 1,
         role: 'assistant',
-        content: language === 'hi'
+        content: isHi
           ? 'वर्तमान मौसम और फसल स्थिति के अनुसार उचित नमी बनाए रखें और नियमित कीट निगरानी करें।'
           : 'Based on current weather and crop conditions, maintain optimal soil moisture and scout for pests.',
         created_at: new Date().toISOString()
@@ -153,25 +184,6 @@ export default function Assistant() {
     } finally {
       setSending(false);
     }
-  };
-
-  const speak = (msgId: number, text: string) => {
-    if (!window.speechSynthesis) return;
-
-    if (speakingId === msgId) {
-      window.speechSynthesis.cancel();
-      setSpeakingId(null);
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
-    utter.onend = () => setSpeakingId(null);
-    utter.onerror = () => setSpeakingId(null);
-
-    window.speechSynthesis.speak(utter);
-    setSpeakingId(msgId);
   };
 
   const suggestedQuestions = [
@@ -253,22 +265,27 @@ export default function Assistant() {
           </div>
         </div>
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col bg-emerald-950/30">
-          {/* Chat Header */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-emerald-500/20 bg-emerald-950/60 backdrop-blur-md">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setShowSidebar(true)} className="md:hidden p-2 rounded-xl glass-card text-emerald-300">
+        {/* Main Chat Interface */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-[#06150b] to-[#040e07]">
+          {/* Top Bar */}
+          <div className="flex items-center justify-between p-3.5 sm:p-4 border-b border-emerald-500/20 bg-emerald-950/60 backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowSidebar(true)}
+                className="md:hidden p-1.5 rounded-lg text-emerald-300 hover:bg-emerald-900"
+              >
                 <Menu className="w-5 h-5" />
               </button>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-lime-400 flex items-center justify-center text-gray-950 font-bold shadow-md">
-                <Bot className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-600 to-lime-400 flex items-center justify-center text-gray-950 font-bold shadow-md">
+                <Bot className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="font-bold text-white text-sm sm:text-base leading-tight">KrishiMitra Smart Assistant</h2>
-                <span className="text-[10px] text-lime-400 flex items-center gap-1 font-semibold">
+                <h2 className="font-bold text-white text-sm sm:text-base leading-tight">
+                  {isHi ? 'कृषि मित्र स्मार्ट सहायक' : 'KrishiMitra Smart Assistant'}
+                </h2>
+                <span className="text-[10px] text-lime-400 flex items-center gap-1 font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-lime-400 animate-pulse" />
-                  Online • ICAR Agronomic Engine
+                  Gemini AI • ICAR Agronomic Engine
                 </span>
               </div>
             </div>
@@ -291,23 +308,32 @@ export default function Assistant() {
           {/* Messages Feed */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center max-w-md mx-auto my-auto py-10">
-                <div className="ai-orb mb-4 flex items-center justify-center shadow-2xl">
-                  <Sparkles className="w-9 h-9 text-emerald-950/70" />
+              <div className="flex flex-col items-center justify-center h-full text-center max-w-md mx-auto my-auto py-8">
+                {/* 3D DotLottie Asset Player */}
+                <div className="relative w-28 h-28 mb-2 flex items-center justify-center">
+                  <dotlottie-player
+                    src="https://lottie.host/89534c3f-10dd-4fac-b3fb-867963f3cffc/YerGkXzK8J.lottie"
+                    background="transparent"
+                    speed="1"
+                    style={{ width: '120px', height: '120px' }}
+                    loop
+                    autoplay
+                  />
                 </div>
+
                 <h3 className="text-xl font-bold text-white mb-1.5">
-                  {language === 'hi' ? 'कृषि मित्र से कुछ भी पूछें' : 'Ask KrishiMitra Anything'}
+                  {isHi ? 'कृषि मित्र से बोलकर या लिखकर पूछें' : 'Ask KrishiMitra by Voice or Text'}
                 </h3>
-                <p className="text-xs text-emerald-300/80 mb-6 leading-relaxed">
-                  {language === 'hi'
-                    ? 'अपनी फसल, मौसम, खाद की मात्रा, या पत्ती के रोग के बारे में पूछें या बोलकर बताएं।'
+                <p className="text-xs text-emerald-300/80 mb-6 leading-relaxed max-w-sm">
+                  {isHi
+                    ? 'फसल, सिंचाई, पत्ती के रोग या खाद के बारे में नीचे माइक दबाकर बोलें।'
                     : 'Personalized advisory based on your crops, soil, and live local weather.'}
                 </p>
 
                 {/* Quick Suggestion Cards */}
                 <div className="w-full space-y-2">
                   {suggestedQuestions.map((q, idx) => {
-                    const text = language === 'hi' ? q.hi : q.en;
+                    const text = isHi ? q.hi : q.en;
                     return (
                       <button
                         key={idx}
@@ -322,7 +348,7 @@ export default function Assistant() {
                 </div>
               </div>
             ) : (
-              messages.map((msg) => (
+              messages.map((msg: any) => (
                 <div
                   key={msg.id}
                   className={`flex items-start gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -344,9 +370,29 @@ export default function Assistant() {
                       {msg.content}
                     </p>
 
+                    {/* Visual Educational Image Card (if provided) */}
+                    {msg.visual && (
+                      <div className="mt-3 overflow-hidden rounded-2xl border border-emerald-400/40 bg-emerald-950/90 shadow-xl">
+                        <img
+                          src={msg.visual.url}
+                          alt={msg.visual.title}
+                          className="w-full h-44 object-cover hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="p-3">
+                          <div className="flex items-center gap-1.5 text-lime-300 text-xs font-bold">
+                            <ImageIcon className="w-3.5 h-3.5" />
+                            <span>{isHi ? (msg.visual.title_hi || msg.visual.title) : msg.visual.title}</span>
+                          </div>
+                          <p className="text-[11px] text-emerald-200/80 mt-0.5">
+                            {msg.visual.caption}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {msg.role === 'assistant' && (
                       <div className="mt-2.5 pt-2 border-t border-emerald-500/20 flex items-center justify-between text-[11px] text-emerald-300">
-                        <span className="opacity-70">KrishiMitra Advisory</span>
+                        <span className="opacity-70">KrishiMitra AI Advisory</span>
                         <button
                           onClick={() => speak(msg.id, msg.content)}
                           className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
@@ -356,7 +402,7 @@ export default function Assistant() {
                           }`}
                         >
                           <Volume2 className="w-3.5 h-3.5 text-lime-400" />
-                          <span>{speakingId === msg.id ? 'Listening...' : (t('assistant_speak') || 'Listen')}</span>
+                          <span>{speakingId === msg.id ? (isHi ? 'बोल रहा है...' : 'Speaking...') : (isHi ? 'सुनें 🔊' : 'Listen')}</span>
                         </button>
                       </div>
                     )}
@@ -380,29 +426,35 @@ export default function Assistant() {
                   <div className="w-2 h-2 bg-lime-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                   <div className="w-2 h-2 bg-lime-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                   <div className="w-2 h-2 bg-lime-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  <span className="text-xs text-emerald-200 ml-2">Consulting agricultural models...</span>
+                  <span className="text-xs text-emerald-200 ml-2">
+                    {isHi ? 'कृषि विशेषज्ञ मॉडल से परामर्श ले रहे हैं...' : 'Consulting agricultural AI models...'}
+                  </span>
                 </div>
               </div>
             )}
             <div ref={messagesEnd} />
           </div>
 
-          {/* Persistent Floating Input Bar (ALWAYS RENDERED) */}
+          {/* Persistent Floating Input Bar with Enhanced Voice Support */}
           <div className="p-3 sm:p-4 border-t border-emerald-500/20 bg-emerald-950/70 backdrop-blur-md">
             <div className="flex items-center gap-2 max-w-3xl mx-auto glass-pill p-1.5 shadow-xl border border-emerald-400/40 focus-within:border-lime-400 transition-all">
+              {/* Large Farmer-Friendly Mic */}
               <VoiceButton
+                size="md"
+                showLabel={false}
+                onInterim={(interim) => setInput(interim)}
                 onResult={(text) => {
                   setInput(text);
-                  send(text);
+                  send(text, true); // auto-speak response when voice queried
                 }}
-                className="!min-h-[40px] !min-w-[40px] w-10 h-10 !bg-emerald-900 hover:!bg-emerald-800 text-lime-400 shadow-md"
+                className="!min-h-[42px] !min-w-[42px] w-11 h-11 shadow-lg"
               />
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
                 placeholder={
-                  language === 'hi'
+                  isHi
                     ? 'खेती का कोई भी प्रश्न पूछें या माइक दबाएं...'
                     : 'Ask anything about fertilizer, disease, watering, or tap mic...'
                 }
