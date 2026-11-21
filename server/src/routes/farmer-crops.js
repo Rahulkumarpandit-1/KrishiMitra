@@ -99,8 +99,8 @@ router.get('/:id', requireAuth, (req, res) => {
       SELECT fc.*, c.name as crop_name, c.name_hi as crop_name_hi, c.category, c.avg_duration_days, c.stages as crop_stages
       FROM farmer_crops fc
       JOIN crops c ON fc.crop_id = c.id
-      WHERE fc.id = ? AND fc.user_id = ?
-    `).get(id, req.user.id);
+      WHERE fc.id = ? AND (fc.user_id = ? OR ? = 'admin')
+    `).get(id, req.user.id, req.user.role);
 
     if (!fc) {
       return res.status(404).json({ success: false, error: 'Farmer crop not found' });

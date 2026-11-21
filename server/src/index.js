@@ -54,31 +54,111 @@ initializeDatabase();
 seedCrops(db);
 seedKnowledge(db);
 
-// Seed default admin user if not exists
-function seedAdminUser() {
+// Seed default demo accounts and initial crops
+function seedDefaultUsers() {
+  const defaultPw = bcrypt.hashSync('password123', 10);
+  const adminPw = bcrypt.hashSync('admin123', 10);
+
+  // 1. Admin
   const adminMobile = '9999999999';
-  const existing = db.prepare('SELECT id FROM users WHERE mobile = ?').get(adminMobile);
-  if (!existing) {
-    const hash = bcrypt.hashSync('admin123', 10);
-    const result = db.prepare(
+  if (!db.prepare('SELECT id FROM users WHERE mobile = ?').get(adminMobile)) {
+    const res = db.prepare(
       'INSERT INTO users (name, mobile, password_hash, role, preferred_language) VALUES (?, ?, ?, ?, ?)'
-    ).run('KrishiMitra Admin', adminMobile, hash, 'admin', 'en');
-    db.prepare('INSERT INTO farmer_profiles (user_id) VALUES (?)').run(result.lastInsertRowid);
-    console.log(`Default admin user created: mobile: ${adminMobile}, password: admin123`);
+    ).run('KrishiMitra Admin', adminMobile, adminPw, 'admin', 'en');
+    db.prepare('INSERT OR IGNORE INTO farmer_profiles (user_id, village, district, state) VALUES (?, ?, ?, ?)').run(
+      res.lastInsertRowid, 'HQ', 'Central', 'Delhi'
+    );
+  }
+
+  // 2. Demo Farmer (Ramesh Patel)
+  const rameshMobile = '9876543210';
+  let ramesh = db.prepare('SELECT id FROM users WHERE mobile = ?').get(rameshMobile);
+  if (!ramesh) {
+    const res = db.prepare(
+      'INSERT INTO users (name, mobile, password_hash, role, preferred_language) VALUES (?, ?, ?, ?, ?)'
+    ).run('Ramesh Patel', rameshMobile, defaultPw, 'farmer', 'hi');
+    const rameshId = Number(res.lastInsertRowid);
+    db.prepare(`
+      INSERT OR IGNORE INTO farmer_profiles (
+        user_id, village, district, state, land_size, soil_type, irrigation_available, irrigation_type, preferred_crops
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(rameshId, 'Khed', 'Pune', 'Maharashtra', 5.5, 'black', 1, 'Drip', 'Onion, Wheat');
+
+    // Seed Active Crop: Onion
+    const sowing = new Date();
+    sowing.setDate(sowing.getDate() - 42); // 42 days ago
+    const cropRes = db.prepare(`
+      INSERT INTO farmer_crops (user_id, crop_id, variety, sowing_date, field_size, field_unit, status, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(rameshId, 3, 'Nashik Red', sowing.toISOString().slice(0, 10), 2.5, 'acres', 'active', 'Regular drip irrigation applied.');
+
+    // Seed some activities for Onion
+    const cropId = Number(cropRes.lastInsertRowid);
+    db.prepare(`
+      INSERT INTO farming_activities (farmer_crop_id, activity_type, description, activity_date)
+      VALUES (?, ?, ?, ?)
+    `).run(cropId, 'irrigation', 'Drip cycle run for 2 hours in morning', new Date().toISOString().slice(0, 10));
+
+    // Seed calendar tasks
+    const calDate = new Date();
+    calDate.setDate(calDate.getDate() + 2);
+    db.prepare(`
+      INSERT INTO farming_calendar (farmer_crop_id, activity_type, title, description, scheduled_date)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(cropId, 'weeding', 'Field Weeding & Soil Aeration', 'Manual weed removal in onion rows', calDate.toISOString().slice(0, 10));
+  }
+
+  // 3. User Rahul (6299400242)
+  const rahulMobile = '6299400242';
+  let rahul = db.prepare('SELECT id FROM users WHERE mobile = ?').get(rahulMobile);
+  if (!rahul) {
+    const res = db.prepare(
+      'INSERT INTO users (name, mobile, password_hash, role, preferred_language) VALUES (?, ?, ?, ?, ?)'
+    ).run('Rahul', rahulMobile, defaultPw, 'farmer', 'en');
+    const rahulId = Number(res.lastInsertRowid);
+    db.prepare(`
+      INSERT OR IGNORE INTO farmer_profiles (
+        user_id, village, district, state, land_size, soil_type, irrigation_available, irrigation_type, preferred_crops
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(rahulId, 'Rampur', 'Patna', 'Bihar', 3.0, 'alluvial', 1, 'Borewell', 'Wheat, Rice');
+
+    const sowing = new Date();
+    sowing.setDate(sowing.getDate() - 25);
+    db.prepare(`
+      INSERT INTO farmer_crops (user_id, crop_id, variety, sowing_date, field_size, field_unit, status, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(rahulId, 1, 'HD-2967', sowing.toISOString().slice(0, 10), 3.0, 'acres', 'active', 'Crown root stage ongoing.');
   }
 }
-seedAdminUser();
+seedDefaultUsers();
 
-// Health check route
+// Health check route with active database connection check
 app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      status: 'healthy',
-      app: 'KrishiMitra Backend',
-      timestamp: new Date().toISOString()
-    }
-  });
+  try {
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+    const cropCount = db.prepare('SELECT COUNT(*) as count FROM crops').get().count;
+    res.json({
+      success: true,
+      data: {
+        status: 'healthy',
+        database: 'connected',
+        engine: 'SQLite (Active & Initialized)',
+        registered_users: Number(userCount),
+        reference_crops: Number(cropCount),
+        app: 'KrishiMitra Backend',
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      data: {
+        status: 'unhealthy',
+        database: 'error: ' + err.message,
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
 });
 
 // Register routes

@@ -13,8 +13,8 @@ router.post('/', requireAuth, (req, res) => {
       return res.status(400).json({ success: false, error: 'farmer_crop_id, activity_type, and activity_date are required' });
     }
 
-    // Verify ownership
-    const fc = db.prepare('SELECT id FROM farmer_crops WHERE id = ? AND user_id = ?').get(farmer_crop_id, req.user.id);
+    // Verify ownership or admin access
+    const fc = db.prepare('SELECT id FROM farmer_crops WHERE id = ? AND (user_id = ? OR ? = \'admin\')').get(farmer_crop_id, req.user.id, req.user.role);
     if (!fc) {
       return res.status(404).json({ success: false, error: 'Farmer crop not found' });
     }
@@ -40,8 +40,8 @@ router.get('/', requireAuth, (req, res) => {
       return res.status(400).json({ success: false, error: 'farmer_crop_id query parameter is required' });
     }
 
-    // Verify ownership
-    const fc = db.prepare('SELECT id FROM farmer_crops WHERE id = ? AND user_id = ?').get(farmer_crop_id, req.user.id);
+    // Verify ownership or admin access
+    const fc = db.prepare('SELECT id FROM farmer_crops WHERE id = ? AND (user_id = ? OR ? = \'admin\')').get(farmer_crop_id, req.user.id, req.user.role);
     if (!fc) {
       return res.status(404).json({ success: false, error: 'Farmer crop not found' });
     }
