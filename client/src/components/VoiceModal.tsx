@@ -43,6 +43,8 @@ export default function VoiceModal({
         'What fertilizer dosage for this stage?'
       ];
 
+  const [selectedLang, setSelectedLang] = useState<'hi' | 'en'>(isHi ? 'hi' : 'en');
+
   // Stop listening
   const stopListening = useCallback(() => {
     try {
@@ -60,17 +62,17 @@ export default function VoiceModal({
 
     const clean = text.replace(/[*#_`]/g, '').replace(/https?:\/\/\S+/g, '');
     const utter = new SpeechSynthesisUtterance(clean);
-    utter.lang = isHi ? 'hi-IN' : 'en-IN';
+    utter.lang = selectedLang === 'hi' ? 'hi-IN' : 'en-IN';
     utter.rate = 0.95;
     utter.onend = () => setIsSpeaking(false);
     utter.onerror = () => setIsSpeaking(false);
 
     window.speechSynthesis.speak(utter);
     setIsSpeaking(true);
-  }, [isHi]);
+  }, [selectedLang]);
 
-  // Start listening with Web Speech API
-  const startListening = useCallback(() => {
+  // Start listening with Web Speech API and explicit mic permission probe
+  const startListening = useCallback(async () => {
     setErrorMsg(null);
     setTranscript('');
     setInterimTranscript('');
@@ -81,20 +83,44 @@ export default function VoiceModal({
     if (!SpeechRecognitionClass) {
       setErrorMsg(
         isHi
-          ? 'आपके ब्राउज़र में आवाज़ पहचान उपलब्ध नहीं है। कृपया Chrome या Edge का उपयोग करें।'
+          ? 'आपके ब्राउज़र में आवाज़ पहचान उपलब्ध नहीं है। कृपया Google Chrome या Edge का उपयोग करें।'
           : 'Speech recognition not supported in this browser. Please use Chrome or Edge.'
       );
       return;
     }
 
+    // Explicit mic permission check to trigger browser permission dialog
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (micErr: any) {
+        console.warn('Microphone permission check:', micErr);
+        if (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError') {
+          setErrorMsg(
+            isHi
+              ? 'माइक्रोफ़ोन की अनुमति नहीं मिली। कृपया ब्राउज़र एड्रेस बार में लॉक/माइक आइकन पर क्लिक करके "Allow" करें।'
+              : 'Microphone permission blocked. Please click the lock or camera icon in the browser address bar and choose "Allow".'
+          );
+          return;
+        }
+      }
+    }
+
     try {
+      if (recognitionRef.current) {
+        try { (recognitionRef.current as any).abort(); } catch {}
+      }
+
       const recognition = new SpeechRecognitionClass();
-      recognition.lang = isHi ? 'hi-IN' : 'en-IN';
+      recognition.lang = selectedLang === 'hi' ? 'hi-IN' : 'en-IN';
       recognition.continuous = false;
       recognition.interimResults = true;
+      (recognition as any).maxAlternatives = 1;
 
       recognition.onstart = () => {
         setIsListening(true);
+        setErrorMsg(null);
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -112,9 +138,12 @@ export default function VoiceModal({
 
         if (interim) setInterimTranscript(interim);
         if (final) {
-          setTranscript(final.trim());
+          const trimmed = final.trim();
+          setTranscript(trimmed);
           setInterimTranscript('');
           setIsListening(false);
+          // Auto submit to AI
+          handleConfirmSubmit(trimmed);
         }
       };
 
@@ -123,13 +152,23 @@ export default function VoiceModal({
         if (event.error === 'not-allowed') {
           setErrorMsg(
             isHi
-              ? 'माइक्रोफ़ोन की अनुमति नहीं मिली। कृपया ब्राउज़र के एड्रेस बार में लॉक/माइक आइकन पर क्लिक करके अनुमति दें।'
-              : 'Microphone permission blocked. Please allow mic access in your browser address bar.'
+              ? 'माइक्रोफ़ोन की अनुमति नहीं मिली। कृपया ब्राउज़र सेटिंग्स में माइक को Allow करें।'
+              : 'Microphone permission denied. Please allow mic access in your browser.'
           );
         } else if (event.error === 'no-speech') {
-          setErrorMsg(isHi ? 'कोई आवाज़ सुनाई नहीं दी। कृपया पुनः बोलें।' : 'No speech detected. Please speak louder.');
+          setErrorMsg(
+            isHi
+              ? 'कोई आवाज़ सुनाई नहीं दी। कृपया माइक बटन दबाकर दोबारा बोलें।'
+              : 'No speech was detected. Tap the mic button to speak again.'
+          );
+        } else if (event.error === 'network') {
+          setErrorMsg(
+            isHi
+              ? 'नेटवर्क समस्या के कारण आवाज़ पहचानी नहीं जा सकी। इंटरनेट चेक करें।'
+              : 'Network error with speech service. Please verify your connection.'
+          );
         } else {
-          setErrorMsg(isHi ? 'आवाज़ पहचानने में त्रुटि हुई।' : 'Speech recognition error.');
+          setErrorMsg(isHi ? 'आवाज़ पहचानने में समस्या आई।' : 'Speech recognition error.');
         }
         setIsListening(false);
       };
@@ -145,7 +184,7 @@ export default function VoiceModal({
       setErrorMsg(isHi ? 'माइक्रोफ़ोन सक्रिय नहीं हो सका।' : 'Could not activate microphone.');
       setIsListening(false);
     }
-  }, [isHi]);
+  }, [isHi, selectedLang]);
 
   // Handle submit query
   const handleConfirmSubmit = async (queryText?: string) => {

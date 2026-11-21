@@ -489,10 +489,16 @@ export default function Dashboard() {
               }}
               className="flex items-center gap-2 p-1.5 rounded-full bg-emerald-950/90 border border-emerald-400/40 shadow-inner focus-within:border-lime-400 transition-all"
             >
-              {/* Voice Microphone Input Button that triggers ChatGPT Modal */}
+              {/* Direct Speech-to-Text Input Mic */}
               <VoiceButton
                 size="sm"
-                onClick={() => setIsVoiceModalOpen(true)}
+                onResult={(text) => {
+                  setQuery(text);
+                  handleAsk(text, true);
+                }}
+                onInterim={(text) => {
+                  if (text) setQuery(text);
+                }}
                 className="w-9 h-9 !min-h-[36px] !min-w-[36px]"
               />
 

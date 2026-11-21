@@ -34,24 +34,44 @@ export default function VoiceButton({
     setListening(false);
   }, []);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     setErrorMsg(null);
     const SpeechRecognitionClass = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognitionClass) {
-      setErrorMsg(isHi ? 'आपके ब्राउज़र में वॉइस सपोर्ट उपलब्ध नहीं है' : 'Voice recognition not supported in this browser');
+      setErrorMsg(isHi ? 'ब्राउज़र में वॉइस सपोर्ट उपलब्ध नहीं है' : 'Voice recognition not supported');
       setTimeout(() => setErrorMsg(null), 4000);
       return;
     }
 
+    // Explicit probe to prompt microphone permission banner
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (err: any) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setErrorMsg(isHi ? 'माइक्रोफ़ोन की अनुमति दें' : 'Please allow microphone access');
+          setTimeout(() => setErrorMsg(null), 4000);
+          return;
+        }
+      }
+    }
+
     try {
+      if (recognitionRef.current) {
+        try { (recognitionRef.current as any).abort(); } catch {}
+      }
+
       const recognition = new SpeechRecognitionClass();
       recognition.lang = isHi ? 'hi-IN' : 'en-IN';
       recognition.continuous = false;
       recognition.interimResults = true;
+      (recognition as any).maxAlternatives = 1;
 
       recognition.onstart = () => {
         setListening(true);
+        setErrorMsg(null);
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -80,10 +100,8 @@ export default function VoiceButton({
       recognition.onerror = (event: any) => {
         console.warn('Speech recognition error:', event.error);
         if (event.error === 'not-allowed') {
-          setErrorMsg(isHi ? 'कृपया माइक्रोफ़ोन की अनुमति दें' : 'Please allow microphone access in browser settings');
-        } else if (event.error === 'no-speech') {
-          // just timeout silently
-        } else {
+          setErrorMsg(isHi ? 'कृपया माइक्रोफ़ोन की अनुमति दें' : 'Please allow microphone access');
+        } else if (event.error !== 'no-speech') {
           setErrorMsg(isHi ? 'आवाज़ पहचान में समस्या आई' : 'Voice input error');
         }
         setListening(false);

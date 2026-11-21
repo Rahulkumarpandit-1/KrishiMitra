@@ -161,20 +161,25 @@ app.get('/api/health', (req, res) => {
   }
 });
 
-// Register routes
-app.use('/api/auth', authRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/crops', cropsRoutes);
-app.use('/api/farmer-crops', farmerCropsRoutes);
-app.use('/api/activities', activitiesRoutes);
-app.use('/api/calendar', calendarRoutes);
-app.use('/api/weather', weatherRoutes);
-app.use('/api/assistant', assistantRoutes);
-app.use('/api/disease', diseaseRoutes);
-app.use('/api/soil', soilRoutes);
-app.use('/api/knowledge', knowledgeRoutes);
-app.use('/api/notifications', notificationsRoutes);
-app.use('/api/admin', adminRoutes);
+// Register routes (support both /api/* and root /* paths seamlessly)
+const mount = (routePath, router) => {
+  app.use('/api' + routePath, router);
+  app.use(routePath, router);
+};
+
+mount('/auth', authRoutes);
+mount('/profile', profileRoutes);
+mount('/crops', cropsRoutes);
+mount('/farmer-crops', farmerCropsRoutes);
+mount('/activities', activitiesRoutes);
+mount('/calendar', calendarRoutes);
+mount('/weather', weatherRoutes);
+mount('/assistant', assistantRoutes);
+mount('/disease', diseaseRoutes);
+mount('/soil', soilRoutes);
+mount('/knowledge', knowledgeRoutes);
+mount('/notifications', notificationsRoutes);
+mount('/admin', adminRoutes);
 
 // 404 handler
 app.use((req, res) => {

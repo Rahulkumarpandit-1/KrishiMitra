@@ -303,19 +303,31 @@ export default function Assistant() {
               </div>
             </div>
 
-            {/* Context Crop Filter */}
-            <select
-              value={cropId || ''}
-              onChange={(e) => setCropId(e.target.value ? parseInt(e.target.value) : undefined)}
-              className="text-xs bg-emerald-950 border border-emerald-500/40 rounded-full px-3 py-1.5 text-white outline-none focus:border-lime-400"
-            >
-              <option value="">{t('assistant_all_crops') || 'Context: All Crops'}</option>
-              {crops.map((c) => (
-                <option key={c.id} value={c.crop_id}>
-                  Crop: {c.crop_name || c.crop?.name}
-                </option>
-              ))}
-            </select>
+            {/* Actions: Voice Mode & Context Crop Filter */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsVoiceModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-900/90 border border-emerald-400/50 text-lime-300 font-bold text-xs hover:bg-emerald-800 hover:scale-105 active:scale-95 transition-all shadow-md"
+                title={isHi ? 'वॉइस सहायक (बोलकर बात करें)' : 'Voice Assistant Mode'}
+              >
+                <Sparkles className="w-3.5 h-3.5 animate-pulse text-lime-400" />
+                <span>{isHi ? 'वॉइस मोड' : 'Voice Mode'}</span>
+              </button>
+
+              <select
+                value={cropId || ''}
+                onChange={(e) => setCropId(e.target.value ? parseInt(e.target.value) : undefined)}
+                className="text-xs bg-emerald-950 border border-emerald-500/40 rounded-full px-3 py-1.5 text-white outline-none focus:border-lime-400"
+              >
+                <option value="">{t('assistant_all_crops') || 'Context: All Crops'}</option>
+                {crops.map((c) => (
+                  <option key={c.id} value={c.crop_id}>
+                    Crop: {c.crop_name || c.crop?.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Messages Feed */}
@@ -451,11 +463,16 @@ export default function Assistant() {
           {/* Persistent Floating Input Bar with Enhanced Voice Modal Trigger */}
           <div className="p-3 sm:p-4 border-t border-emerald-500/20 bg-emerald-950/70 backdrop-blur-md">
             <div className="flex items-center gap-2 max-w-3xl mx-auto glass-pill p-1.5 shadow-xl border border-emerald-400/40 focus-within:border-lime-400 transition-all">
-              {/* Large Farmer-Friendly Mic that opens ChatGPT Voice Modal */}
+              {/* Direct Speech-to-Text Mic for Input Bar */}
               <VoiceButton
                 size="md"
                 showLabel={false}
-                onClick={() => setIsVoiceModalOpen(true)}
+                onResult={(text) => {
+                  setInput((prev) => (prev ? prev + ' ' : '') + text);
+                }}
+                onInterim={(text) => {
+                  if (text) setInput(text);
+                }}
                 className="!min-h-[42px] !min-w-[42px] w-11 h-11 shadow-lg"
               />
               <input
