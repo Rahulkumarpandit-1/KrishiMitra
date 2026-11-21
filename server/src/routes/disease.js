@@ -55,11 +55,25 @@ router.post('/analyze', requireAuth, upload.single('image'), async (req, res) =>
       console.warn('Could not persist image to disk:', fsErr.message);
     }
 
-    // Get crop info if provided
+    // Get crop info if provided, or fallback to user's active crop
     let cropName = null;
-    if (crop_id) {
-      const crop = db.prepare('SELECT name FROM crops WHERE id = ?').get(crop_id);
+    let targetCropId = crop_id ? Number(crop_id) : null;
+    if (targetCropId) {
+      const crop = db.prepare('SELECT name FROM crops WHERE id = ?').get(targetCropId);
       if (crop) cropName = crop.name;
+    } else {
+      const activeCrop = db.prepare(`
+        SELECT fc.crop_id, c.name 
+        FROM farmer_crops fc 
+        JOIN crops c ON fc.crop_id = c.id 
+        WHERE fc.user_id = ? AND fc.status = 'active' 
+        ORDER BY fc.created_at DESC 
+        LIMIT 1
+      `).get(req.user.id);
+      if (activeCrop) {
+        cropName = activeCrop.name;
+        targetCropId = activeCrop.crop_id;
+      }
     }
 
     // Analyze the image via AI / Agronomic Engine
@@ -70,7 +84,7 @@ router.post('/analyze', requireAuth, upload.single('image'), async (req, res) =>
       'INSERT INTO disease_reports (user_id, crop_id, image_path, diagnosis, confidence, suggestions) VALUES (?, ?, ?, ?, ?, ?)'
     ).run(
       req.user.id,
-      crop_id ? Number(crop_id) : null,
+      targetCropId,
       filename,
       analysis.diagnosis,
       analysis.confidence,
