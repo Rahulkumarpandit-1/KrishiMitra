@@ -9,23 +9,39 @@ const router = express.Router();
 // POST /api/auth/register
 router.post('/register', (req, res) => {
   try {
-    const { name, mobile, password, preferred_language } = req.body;
+    const {
+      name,
+      mobile,
+      password,
+      preferred_language,
+      village,
+      district,
+      state,
+      land_size,
+      soil_type,
+      irrigation_available,
+      irrigation_type,
+      preferred_crops
+    } = req.body;
 
     if (!name || !mobile || !password) {
       return res.status(400).json({ success: false, error: 'Name, mobile, and password are required' });
     }
 
     if (mobile.length < 10) {
-      return res.status(400).json({ success: false, error: 'Invalid mobile number' });
+      return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit mobile number' });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long' });
     }
 
     const existing = db.prepare('SELECT id FROM users WHERE mobile = ?').get(mobile);
     if (existing) {
-      return res.status(400).json({ success: false, error: 'Mobile number already registered' });
+      return res.status(400).json({
+        success: false,
+        error: 'This mobile number is already registered. Please Sign In directly.'
+      });
     }
 
     const password_hash = bcrypt.hashSync(password, 10);
@@ -34,10 +50,31 @@ router.post('/register', (req, res) => {
       'INSERT INTO users (name, mobile, password_hash, preferred_language) VALUES (?, ?, ?, ?)'
     );
     const result = insertUser.run(name, mobile, password_hash, preferred_language || 'en');
-    const userId = result.lastInsertRowid;
+    const userId = Number(result.lastInsertRowid);
 
-    // Create empty farmer profile
-    db.prepare('INSERT INTO farmer_profiles (user_id) VALUES (?)').run(userId);
+    // Create detailed farmer profile
+    try {
+      db.prepare(`
+        INSERT INTO farmer_profiles (
+          user_id, village, district, state, land_size, soil_type,
+          irrigation_available, irrigation_type, preferred_crops
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        userId,
+        village || null,
+        district || null,
+        state || null,
+        land_size ? Number(land_size) : null,
+        soil_type || null,
+        irrigation_available ? 1 : 0,
+        irrigation_type || null,
+        preferred_crops || null
+      );
+    } catch (profileErr) {
+      console.warn('Profile insert fallback:', profileErr.message);
+      // Fallback if table has fewer columns
+      db.prepare('INSERT OR IGNORE INTO farmer_profiles (user_id) VALUES (?)').run(userId);
+    }
 
     const token = generateToken({ id: userId, role: 'farmer', name });
 
@@ -50,7 +87,7 @@ router.post('/register', (req, res) => {
     });
   } catch (error) {
     console.error('Register error:', error.message);
-    res.status(500).json({ success: false, error: 'Registration failed' });
+    res.status(500).json({ success: false, error: 'Registration failed. ' + error.message });
   }
 });
 

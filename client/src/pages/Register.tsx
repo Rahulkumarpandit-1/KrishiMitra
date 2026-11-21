@@ -61,8 +61,13 @@ export default function Register() {
         preferred_crops: form.preferred_crops,
       });
       navigate('/');
-    } catch {
-      setError(t('register_error') || 'Registration failed. Mobile might already exist.');
+    } catch (err: any) {
+      const serverMsg =
+        err?.response?.data?.error ||
+        err?.response?.data?.message ||
+        err?.message ||
+        (isHi ? 'पंजीकरण विफल रहा। मोबाइल नंबर पहले से मौजूद हो सकता है।' : 'Registration failed. Mobile number might already be registered.');
+      setError(serverMsg);
     } finally {
       setLoading(false);
     }
