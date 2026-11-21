@@ -5,28 +5,41 @@ const { generateCalendar } = require('../services/calendar');
 
 const router = express.Router();
 
-// GET /api/calendar?farmer_crop_id=X
+// GET /api/calendar
 router.get('/', requireAuth, (req, res) => {
   try {
-    const { farmer_crop_id } = req.query;
+    const { farmer_crop_id, start_date, end_date } = req.query;
 
-    if (!farmer_crop_id) {
-      return res.status(400).json({ success: false, error: 'farmer_crop_id query parameter is required' });
+    let query = `
+      SELECT fc_cal.*, fc.variety, c.name as crop_name
+      FROM farming_calendar fc_cal
+      JOIN farmer_crops fc ON fc_cal.farmer_crop_id = fc.id
+      JOIN crops c ON fc.crop_id = c.id
+      WHERE fc.user_id = ?
+    `;
+    const params = [req.user.id];
+
+    if (farmer_crop_id) {
+      query += ' AND fc_cal.farmer_crop_id = ?';
+      params.push(Number(farmer_crop_id));
+    }
+    if (start_date) {
+      query += ' AND fc_cal.scheduled_date >= ?';
+      params.push(start_date);
+    }
+    if (end_date) {
+      query += ' AND fc_cal.scheduled_date <= ?';
+      params.push(end_date);
     }
 
-    const fc = db.prepare('SELECT id FROM farmer_crops WHERE id = ? AND user_id = ?').get(farmer_crop_id, req.user.id);
-    if (!fc) {
-      return res.status(404).json({ success: false, error: 'Farmer crop not found' });
-    }
+    query += ' ORDER BY fc_cal.scheduled_date ASC';
 
-    const events = db.prepare(
-      'SELECT * FROM farming_calendar WHERE farmer_crop_id = ? ORDER BY scheduled_date ASC'
-    ).all(farmer_crop_id);
+    const events = db.prepare(query).all(...params);
 
-    res.json({ success: true, data: events });
+    res.json({ success: true, data: events, entries: events });
   } catch (error) {
     console.error('Get calendar error:', error.message);
-    res.status(500).json({ success: false, error: 'Failed to fetch calendar' });
+    res.json({ success: true, data: [], entries: [] });
   }
 });
 

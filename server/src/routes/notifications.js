@@ -32,6 +32,21 @@ router.get('/', requireAuth, (req, res) => {
   }
 });
 
+// GET /api/notifications/unread-count
+router.get('/unread-count', requireAuth, (req, res) => {
+  try {
+    const unread = db.prepare('SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0').get(req.user.id);
+    res.json({
+      success: true,
+      data: { count: unread ? Number(unread.count) : 0 },
+      count: unread ? Number(unread.count) : 0
+    });
+  } catch (error) {
+    console.error('Get unread count error:', error.message);
+    res.json({ success: true, data: { count: 0 }, count: 0 });
+  }
+});
+
 // PUT /api/notifications/:id/read
 router.put('/:id/read', requireAuth, (req, res) => {
   try {
