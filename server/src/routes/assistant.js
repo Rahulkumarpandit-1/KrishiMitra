@@ -122,21 +122,34 @@ router.get('/conversations/:id/messages', requireAuth, (req, res) => {
 // POST /api/assistant/chat
 router.post('/chat', requireAuth, async (req, res) => {
   try {
-    const { conversation_id, message } = req.body;
+    let { conversation_id, message, crop_id } = req.body;
+    const userQuery = message || req.body.query || req.body.text;
 
-    if (!conversation_id || !message) {
-      return res.status(400).json({ success: false, error: 'conversation_id and message are required' });
+    if (!userQuery || !userQuery.trim()) {
+      return res.status(400).json({ success: false, error: 'message is required' });
     }
 
-    const conversation = db.prepare('SELECT * FROM assistant_conversations WHERE id = ? AND user_id = ?').get(conversation_id, req.user.id);
-    if (!conversation) {
-      return res.status(404).json({ success: false, error: 'Conversation not found' });
+    const cleanMessage = userQuery.trim();
+
+    // Verify or auto-create conversation
+    let conv = null;
+    if (conversation_id) {
+      conv = db.prepare('SELECT * FROM assistant_conversations WHERE id = ? AND user_id = ?').get(conversation_id, req.user.id);
+    }
+
+    if (!conv) {
+      const title = cleanMessage.substring(0, 45) + (cleanMessage.length > 45 ? '...' : '');
+      const ins = db.prepare(
+        'INSERT INTO assistant_conversations (user_id, title, crop_id) VALUES (?, ?, ?)'
+      ).run(req.user.id, title, crop_id ? Number(crop_id) : null);
+      conversation_id = Number(ins.lastInsertRowid);
+      conv = { id: conversation_id, user_id: req.user.id, title, crop_id };
     }
 
     // Save user message
-    db.prepare('INSERT INTO assistant_messages (conversation_id, role, content) VALUES (?, ?, ?)').run(conversation_id, 'user', message);
+    db.prepare('INSERT INTO assistant_messages (conversation_id, role, content) VALUES (?, ?, ?)').run(conversation_id, 'user', cleanMessage);
 
-    // Build context
+    // Build farmer context
     const profile = db.prepare('SELECT * FROM farmer_profiles WHERE user_id = ?').get(req.user.id);
     const farmerCrops = db.prepare(`
       SELECT fc.*, c.name as crop_name, c.stages
@@ -149,8 +162,8 @@ router.post('/chat', requireAuth, async (req, res) => {
       'SELECT role, content FROM assistant_messages WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 10'
     ).all(conversation_id);
 
-    // Get AI response
-    const aiResponse = await chat(message, {
+    // Get AI response (Grok -> Gemini -> ICAR Agronomic Engine)
+    const aiResponse = await chat(cleanMessage, {
       user: req.user,
       profile,
       farmerCrops,
@@ -161,14 +174,8 @@ router.post('/chat', requireAuth, async (req, res) => {
     // Save assistant message
     db.prepare('INSERT INTO assistant_messages (conversation_id, role, content) VALUES (?, ?, ?)').run(conversation_id, 'assistant', aiResponse);
 
-    // Update conversation title if first message
-    if (history.length <= 1) {
-      const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
-      db.prepare('UPDATE assistant_conversations SET title = ? WHERE id = ?').run(title, conversation_id);
-    }
-
-    // Match visual educational reference (respecting greeting exclusions)
-    const visual = matchAgriVisual(message, aiResponse);
+    // Match visual educational reference
+    const visual = matchAgriVisual(cleanMessage, aiResponse);
 
     const assistantMsg = {
       id: Date.now(),
@@ -182,7 +189,8 @@ router.post('/chat', requireAuth, async (req, res) => {
     res.json({
       success: true,
       data: {
-        user_message: message,
+        conversation_id,
+        user_message: cleanMessage,
         assistant_message: aiResponse,
         visual,
         message: assistantMsg
@@ -190,7 +198,7 @@ router.post('/chat', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Chat error:', error.message);
-    res.status(500).json({ success: false, error: 'Failed to process chat message' });
+    res.status(500).json({ success: false, error: 'Failed to process chat message: ' + error.message });
   }
 });
 

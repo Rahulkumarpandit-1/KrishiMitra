@@ -191,6 +191,7 @@ CRITICAL RULE FOR GREETINGS: If the user simply says "hi", "hey", "hello", "nama
 
       const xaiRes = await fetch(XAI_URL, {
         method: 'POST',
+        signal: AbortSignal.timeout(3500),
         headers: {
           'Authorization': `Bearer ${XAI_API_KEY}`,
           'Content-Type': 'application/json'
@@ -219,7 +220,7 @@ CRITICAL RULE FOR GREETINGS: If the user simply says "hi", "hey", "hello", "nama
     }
   }
 
-  // 2. Try Google Gemini (gemini-3.5-flash) next
+  // 2. Try Google Gemini next
   if (GEMINI_API_KEY) {
     try {
       const contents = [];
@@ -238,6 +239,7 @@ CRITICAL RULE FOR GREETINGS: If the user simply says "hi", "hey", "hello", "nama
 
       const gemRes = await fetch(GEMINI_URL + `?key=${GEMINI_API_KEY}`, {
         method: 'POST',
+        signal: AbortSignal.timeout(3500),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents,
