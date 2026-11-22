@@ -200,9 +200,23 @@ function initializeDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (crop_id) REFERENCES crops(id)
     );
+
+    -- Performance Indexes for High Query Efficiency
+    CREATE INDEX IF NOT EXISTS idx_users_mobile ON users(mobile);
+    CREATE INDEX IF NOT EXISTS idx_farmer_crops_user_id ON farmer_crops(user_id);
+    CREATE INDEX IF NOT EXISTS idx_farmer_crops_crop_id ON farmer_crops(crop_id);
+    CREATE INDEX IF NOT EXISTS idx_activities_crop_id ON farming_activities(farmer_crop_id);
+    CREATE INDEX IF NOT EXISTS idx_calendar_crop_id ON farming_calendar(farmer_crop_id);
+    CREATE INDEX IF NOT EXISTS idx_calendar_date ON farming_calendar(scheduled_date);
+    CREATE INDEX IF NOT EXISTS idx_disease_reports_user ON disease_reports(user_id);
+    CREATE INDEX IF NOT EXISTS idx_soil_records_user ON soil_records(user_id);
+    CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read);
+    CREATE INDEX IF NOT EXISTS idx_assistant_conv_user ON assistant_conversations(user_id);
+    CREATE INDEX IF NOT EXISTS idx_assistant_msg_conv ON assistant_messages(conversation_id);
+    CREATE INDEX IF NOT EXISTS idx_knowledge_category ON knowledge_articles(category);
   `);
 
-  console.log('Database initialized successfully');
+  console.log('Database initialized successfully with performance indexes');
 }
 
 module.exports = { db, initializeDatabase };

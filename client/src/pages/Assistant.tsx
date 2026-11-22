@@ -226,11 +226,10 @@ export default function Assistant() {
               {conversations.map((c) => (
                 <div
                   key={c.id}
-                  className={`flex items-center gap-2 p-3 rounded-2xl cursor-pointer transition-all ${
-                    activeId === c.id
-                      ? 'bg-emerald-900/90 text-white font-bold border border-lime-400/50'
-                      : 'text-emerald-200/80 hover:bg-emerald-950/60'
-                  }`}
+                  className={`flex items-center gap-2 p-3 rounded-2xl cursor-pointer transition-all ${activeId === c.id
+                    ? 'bg-emerald-900/90 text-white font-bold border border-lime-400/50'
+                    : 'text-emerald-200/80 hover:bg-emerald-950/60'
+                    }`}
                 >
                   <button onClick={() => { setActiveId(c.id); setShowSidebar(false); }} className="flex-1 text-left text-xs truncate">
                     {c.title}
@@ -257,11 +256,10 @@ export default function Assistant() {
             {conversations.map((c) => (
               <div
                 key={c.id}
-                className={`group flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all ${
-                  activeId === c.id
-                    ? 'bg-emerald-900/80 text-white font-bold border border-lime-400/40 shadow-md'
-                    : 'text-emerald-200/70 hover:bg-emerald-900/40 hover:text-white'
-                }`}
+                className={`group flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all ${activeId === c.id
+                  ? 'bg-emerald-900/80 text-white font-bold border border-lime-400/40 shadow-md'
+                  : 'text-emerald-200/70 hover:bg-emerald-900/40 hover:text-white'
+                  }`}
               >
                 <button onClick={() => setActiveId(c.id)} className="flex-1 text-left text-xs truncate mr-2">
                   {c.title}
@@ -385,11 +383,10 @@ export default function Assistant() {
                   )}
 
                   <div
-                    className={`max-w-[85%] sm:max-w-[75%] rounded-3xl px-5 py-3.5 shadow-xl ${
-                      msg.role === 'user'
-                        ? 'bg-gradient-to-r from-emerald-500 to-lime-400 text-gray-950 font-bold rounded-tr-sm'
-                        : 'glass-card border border-emerald-400/40 text-white rounded-tl-sm bg-emerald-950/80'
-                    }`}
+                    className={`max-w-[85%] sm:max-w-[75%] rounded-3xl px-5 py-3.5 shadow-xl ${msg.role === 'user'
+                      ? 'bg-gradient-to-r from-emerald-500 to-lime-400 text-gray-950 font-bold rounded-tr-sm'
+                      : 'glass-card border border-emerald-400/40 text-white rounded-tl-sm bg-emerald-950/80'
+                      }`}
                   >
                     <p className="text-xs sm:text-sm whitespace-pre-wrap leading-relaxed">
                       {msg.content}
@@ -420,11 +417,10 @@ export default function Assistant() {
                         <span className="opacity-70">KrishiMitra AI Advisory</span>
                         <button
                           onClick={() => speak(msg.id, msg.content)}
-                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
-                            speakingId === msg.id
-                              ? 'bg-lime-400 text-gray-950 animate-pulse'
-                              : 'hover:bg-emerald-800/60 text-emerald-200'
-                          }`}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${speakingId === msg.id
+                            ? 'bg-lime-400 text-gray-950 animate-pulse'
+                            : 'hover:bg-emerald-800/60 text-emerald-200'
+                            }`}
                         >
                           <Volume2 className="w-3.5 h-3.5 text-lime-400" />
                           <span>{speakingId === msg.id ? (isHi ? 'बोल रहा है...' : 'Speaking...') : (isHi ? 'सुनें 🔊' : 'Listen')}</span>

@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
@@ -39,12 +41,38 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // Middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
 app.use(cors({
   origin: true,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Rate limiting (protects against brute-force & API flooding, disabled during testing)
+if (process.env.NODE_ENV !== 'test') {
+  const generalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many requests, please try again later.' }
+  });
+  app.use('/api', generalLimiter);
+
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many login attempts, please try again later.' }
+  });
+  app.use('/api/auth/login', authLimiter);
+  app.use('/auth/login', authLimiter);
+}
 
 // Static files for uploads
 app.use('/uploads', express.static(uploadsDir));
@@ -195,8 +223,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server (only if run directly, not in Vercel serverless)
-if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+// Start server (only if run directly, not in Vercel serverless, not in test)
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log(`===============================================`);
     console.log(`KrishiMitra Backend running on port ${PORT}`);

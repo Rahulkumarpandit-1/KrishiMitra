@@ -56,10 +56,11 @@ export default function Header() {
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => navigate('/assistant')}
-            className="w-10 h-10 rounded-full glass-card flex items-center justify-center text-emerald-300 hover:text-white hover:border-emerald-400/40 transition-all"
+            aria-label="Search and ask AI Assistant"
+            className="w-10 h-10 rounded-full glass-card flex items-center justify-center text-emerald-300 hover:text-white hover:border-emerald-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 transition-all"
             title="Search or Ask Assistant"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-4 h-4" aria-hidden="true" />
           </button>
 
           <LanguageToggle />
@@ -69,10 +70,11 @@ export default function Header() {
           {user && (
             <button
               onClick={() => navigate('/profile')}
-              className="hidden sm:flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-full glass-card hover:border-emerald-400/40 transition-all text-left group"
+              aria-label={`View profile of ${user.name}`}
+              className="hidden sm:flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-full glass-card hover:border-emerald-400/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 transition-all text-left group"
             >
               <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-emerald-600 to-lime-400 flex items-center justify-center font-bold text-xs text-gray-950 shadow-md">
-                {user.name ? user.name.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}
+                {user.name ? user.name.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" aria-hidden="true" />}
               </div>
               <div className="text-xs">
                 <span className="font-semibold text-white block leading-tight group-hover:text-lime-300 transition-colors">
