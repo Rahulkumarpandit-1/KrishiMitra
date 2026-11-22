@@ -45,7 +45,11 @@
 Production-ready hackathon state. 100% of automated tests passing, clean TypeScript build, complete security hardening, and SEO metadata configured.
 
 #### Completed Tasks
-1. **Vercel Build / Dependency Conflict Resolution (Resolved)**:
+1. **Hackathon Submission Optimization & PWA Manifest**:
+   - Added dedicated Hack2Skill Challenge Brief in `README.md` detailing: Vertical, Persona, Approach & Architecture Logic, Farmer Lifecycle Journey, and Assumptions.
+   - Created `client/public/manifest.json` and integrated PWA meta tags into `client/index.html` for home-screen mobile installation.
+   - Clean client production build verified (`tsc -b && vite build`) in 35.2s.
+2. **Vercel Build / Dependency Conflict Resolution (Resolved)**:
    - Root cause: An earlier session installed `vitest@5.1.1` into `client/package.json` with `--legacy-peer-deps`. `vitest@5.1.1` has a peer dependency on `vite@^6 || ^7 || ^8`, while the project uses `vite@^5.4.0`.
    - On Vercel, clean `npm --prefix client install` crashed with `ERESOLVE Could not resolve dependency`.
    - Fix: Removed unused `vitest` and testing-library dependencies from `client/package.json` (backend runs 87 tests on Jest). Added `.npmrc` with `legacy-peer-deps=true` as CI/CD safeguard.

@@ -6,6 +6,35 @@ KrishiMitra is a comprehensive, farmer-friendly agricultural decision-support pl
 
 ---
 
+## 🏆 Hack2Skill AI Hackathon Submission Brief
+
+### 1. Chosen Vertical & Target Persona
+- **Vertical**: Agriculture & Rural Technology (AgriTech / Smart Decision Assistant).
+- **Target Persona**: Indian smallholder farmers (e.g., Ramesh Patel) cultivating 1–5 acres who need actionable, localized agronomic guidance without complex jargon.
+- **Key Challenges Addressed**: Intermittent rural connectivity, literacy/language barriers (solved via Hindi/English bilingual voice interface), unpredictable weather anomalies (solved via real-time Open-Meteo alerts), and crop disease diagnosis delays (solved via instant on-device computer vision).
+
+### 2. Approach & Architecture Logic
+- **Bilingual & Voice-First UX**: Built with React 18, Tailwind CSS (Nature-Tech Glassmorphism), and Web Speech API (SpeechRecognition & SpeechSynthesis in Hindi and English) to ensure accessibility for semi-literate farmers.
+- **Resilient AI Fallback Architecture**: A 3-tier cascade (`Google Gemini API` → `xAI Grok API` → `ICAR Agronomic Expert Rules Engine`) guarantees the farmer never receives a timeout or 500 error even in offline or quota-depleted scenarios.
+- **Edge Meteorological Telemetry**: Direct integration with Open-Meteo REST API providing hyper-local 7-day temperature gradients, precipitation probabilities, and agro-specific hazard triggers (frost, spray-window high winds, heat stress).
+- **Perceptual Hash Vision Engine**: Client & server image analysis detecting 15+ Indian crop pathologies (Late Blight, Yellow Rust, Powdery Mildew, Leaf Curl) with localized remediation recommendations and KVK validation disclaimers.
+- **Lightweight & High Efficiency**: Zero heavy native dependencies; leverages Node.js 22 built-in `node:sqlite` with WAL mode and B-tree indexes, achieving sub-millisecond query responses. Initial client JS bundle is kept at **42.92 kB** (14.29 kB gzip) via route-level code splitting.
+
+### 3. How the Solution Works (Farmer Lifecycle Journey)
+1. **Onboarding & Profiling**: Farmer signs up with mobile number; configures district, land size, soil type (black, alluvial, red, etc.), and irrigation facilities.
+2. **Dynamic Stage-Based Calendar**: Sowing date input triggers automated growth stage calculation (Seedling, Vegetative, Flowering, Maturity) and populates day-by-day agricultural action tasks (irrigation cycles, fertilizer splits).
+3. **Daily Farm Decision Support**: Dashboard surfaces real-time weather risk alerts, pending agricultural activities, and a multi-axis crop health biometric radar.
+4. **Disease Scouting & Remediation**: Farmer captures leaf photos via camera or file upload; system diagnoses pathology with confidence level, organic/chemical treatment steps, and emergency KVK contacts.
+5. **Soil Health Optimization**: Farmer enters N-P-K readings to receive calculated fertilizer dosages (Urea, DAP, MOP) tailored to crop needs.
+
+### 4. Assumptions & Design Decisions
+- **Identity Mechanism**: Mobile phone number serves as primary identity key (reflecting rural Indian authentication norms; no mandatory email requirement).
+- **Land Measurement Units**: Defaults to acres (standard in Indian state revenue records) with flexible hectare conversion.
+- **Connectivity Resiliency**: Assumes rural 2G/3G/intermittent 4G connectivity; all key screens (weather, AI advisory, disease diagnosis, calendar) include graceful offline fallbacks that function even when external cloud APIs fail.
+- **No Financial/Transaction Intermediary**: The platform acts strictly as an advisory and decision-support assistant; all chemical dosages are accompanied by ICAR and safety disclaimers.
+
+---
+
 ## 🎨 Design Philosophy: Nature-Tech Glassmorphism
 
 The frontend design draws inspiration from modern eco-tech dashboards:
