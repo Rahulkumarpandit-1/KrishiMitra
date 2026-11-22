@@ -44,7 +44,7 @@ router.post('/register', (req, res) => {
       });
     }
 
-    const password_hash = bcrypt.hashSync(password, 10);
+    const password_hash = bcrypt.hashSync(password, 12);
 
     const insertUser = db.prepare(
       'INSERT INTO users (name, mobile, password_hash, preferred_language) VALUES (?, ?, ?, ?)'

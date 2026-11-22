@@ -87,8 +87,8 @@ seedKnowledge(db);
 
 // Seed default demo accounts and initial crops
 function seedDefaultUsers() {
-  const defaultPw = bcrypt.hashSync('password123', 10);
-  const adminPw = bcrypt.hashSync('admin123', 10);
+  const defaultPw = bcrypt.hashSync('password123', 12);
+  const adminPw = bcrypt.hashSync('admin123', 12);
 
   // 1. Admin
   const adminMobile = '9999999999';

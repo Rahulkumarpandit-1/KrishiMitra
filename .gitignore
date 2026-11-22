@@ -11,6 +11,7 @@ package-lock.json
 dist/
 build/
 .dist/
+client/dist/
 
 # Uploads & User Media (keep directory structure)
 server/uploads/*

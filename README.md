@@ -166,7 +166,7 @@ New farmers can also register directly via the registration screen.
 
 ---
 
-## 🧪 Comprehensive Testing Suite (76/76 Passed, 100% Pass Rate)
+## 🧪 Comprehensive Testing Suite (87/87 Passed, 100% Pass Rate)
 
 KrishiMitra includes a production-grade automated test suite written with **Jest** and **Supertest**, covering all critical system components:
 
@@ -194,7 +194,7 @@ npm --prefix server test
 
 - **Security Headers**: Integrated `helmet` with custom Cross-Origin Resource Policy headers.
 - **Brute-Force & Rate Limiting**: `express-rate-limit` guards login endpoints against brute-force attacks and limits general API flooding.
-- **SQL Injection Immunization**: 100% parameterized queries using `better-sqlite3` prepared statements.
+- **SQL Injection Immunization**: 100% parameterized queries using `node:sqlite` prepared statements (`DatabaseSync.prepare()`).
 - **Zero Exposed Secrets**: All sensitive tokens and keys are securely encapsulated in environment variables; production frontend contains zero private keys.
 - **Graceful Error Handling**: Error responses use sanitized JSON envelopes and never leak server stack traces or directory internals.
 
@@ -202,7 +202,7 @@ npm --prefix server test
 
 ## ⚡ Performance, Efficiency & Accessibility (WCAG 2.2 AA)
 
-- **Dynamic Route Code-Splitting**: React `lazy` and `Suspense` reduce initial bundle size from **800 kB down to 273 kB (91 kB gzip)**.
+- **Dynamic Route Code-Splitting**: React `lazy` and `Suspense` reduce initial bundle size from **800 kB down to 42.92 kB (14.29 kB gzip)** with Rollup vendor chunks.
 - **Database Query Indexing**: Custom B-tree indexes on `users(mobile)`, `farmer_crops(user_id)`, `farming_activities(farmer_crop_id)`, and `notifications(user_id, is_read)` guarantee sub-millisecond query execution.
 - **WCAG 2.2 AA Accessibility**:
   - Semantic HTML landmarks (`<nav>`, `<header>`, `<main>`).
