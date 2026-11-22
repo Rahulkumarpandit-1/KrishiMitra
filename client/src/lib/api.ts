@@ -7,13 +7,16 @@ import type {
 } from './types';
 
 let rawApiUrl = import.meta.env.VITE_API_URL || '/api';
+// Normalize: strip trailing slash, ensure ends with /api
 if (rawApiUrl.endsWith('/')) rawApiUrl = rawApiUrl.slice(0, -1);
 if (!rawApiUrl.endsWith('/api') && !rawApiUrl.includes('/api/')) {
   rawApiUrl = rawApiUrl + '/api';
 }
+// Ensure trailing slash so relative paths (without leading /) resolve correctly
+const BASE_URL = rawApiUrl + '/';
 
 const api = axios.create({
-  baseURL: rawApiUrl,
+  baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -75,67 +78,67 @@ api.interceptors.response.use(
 // Auth
 export const authApi = {
   login: (mobile: string, password: string) =>
-    api.post<{ token: string; user: User }>('/auth/login', { mobile, password }),
+    api.post<{ token: string; user: User }>('auth/login', { mobile, password }),
   register: (data: RegisterData) =>
-    api.post<{ token: string; user: User }>('/auth/register', data),
-  me: () => api.get<{ user: User }>('/auth/me'),
+    api.post<{ token: string; user: User }>('auth/register', data),
+  me: () => api.get<{ user: User }>('auth/me'),
 };
 
 // Profile
 export const profileApi = {
-  get: () => api.get<{ profile: FarmerProfile }>('/profile'),
-  update: (data: Partial<FarmerProfile>) => api.put('/profile', data),
+  get: () => api.get<{ profile: FarmerProfile }>('profile'),
+  update: (data: Partial<FarmerProfile>) => api.put('profile', data),
 };
 
 // Crops (reference)
 export const cropsApi = {
-  list: () => api.get<{ crops: Crop[] }>('/crops'),
-  get: (id: number) => api.get<{ crop: Crop }>(`/crops/${id}`),
-  create: (data: Partial<Crop>) => api.post('/crops', data),
-  update: (id: number, data: Partial<Crop>) => api.put(`/crops/${id}`, data),
-  delete: (id: number) => api.delete(`/crops/${id}`),
+  list: () => api.get<{ crops: Crop[] }>('crops'),
+  get: (id: number) => api.get<{ crop: Crop }>(`crops/${id}`),
+  create: (data: Partial<Crop>) => api.post('crops', data),
+  update: (id: number, data: Partial<Crop>) => api.put(`crops/${id}`, data),
+  delete: (id: number) => api.delete(`crops/${id}`),
 };
 
 // Farmer Crops
 export const farmerCropsApi = {
-  list: () => api.get<{ farmer_crops: FarmerCrop[] }>('/farmer-crops'),
-  get: (id: number) => api.get<{ farmer_crop: FarmerCrop }>(`/farmer-crops/${id}`),
+  list: () => api.get<{ farmer_crops: FarmerCrop[] }>('farmer-crops'),
+  get: (id: number) => api.get<{ farmer_crop: FarmerCrop }>(`farmer-crops/${id}`),
   add: (data: { crop_id: number; sowing_date: string; field_size: number; variety?: string }) =>
-    api.post<{ farmer_crop: FarmerCrop }>('/farmer-crops', data),
-  update: (id: number, data: Partial<FarmerCrop>) => api.put(`/farmer-crops/${id}`, data),
-  delete: (id: number) => api.delete(`/farmer-crops/${id}`),
+    api.post<{ farmer_crop: FarmerCrop }>('farmer-crops', data),
+  update: (id: number, data: Partial<FarmerCrop>) => api.put(`farmer-crops/${id}`, data),
+  delete: (id: number) => api.delete(`farmer-crops/${id}`),
 };
 
 // Activities
 export const activitiesApi = {
   list: (farmerCropId: number) =>
-    api.get<{ activities: FarmingActivity[] }>(`/activities?farmer_crop_id=${farmerCropId}`),
-  create: (data: Partial<FarmingActivity>) => api.post('/activities', data),
+    api.get<{ activities: FarmingActivity[] }>(`activities?farmer_crop_id=${farmerCropId}`),
+  create: (data: Partial<FarmingActivity>) => api.post('activities', data),
 };
 
 // Calendar
 export const calendarApi = {
   list: (params?: { farmer_crop_id?: number; start_date?: string; end_date?: string }) =>
-    api.get<{ entries: CalendarEntry[] }>('/calendar', { params }),
-  updateStatus: (id: number, status: string) => api.put(`/calendar/${id}`, { status }),
+    api.get<{ entries: CalendarEntry[] }>('calendar', { params }),
+  updateStatus: (id: number, status: string) => api.put(`calendar/${id}`, { status }),
 };
 
 // Weather
 export const weatherApi = {
   get: (lat?: number, lng?: number) =>
-    api.get<WeatherData>('/weather', { params: { lat, lng } }),
+    api.get<WeatherData>('weather', { params: { lat, lng } }),
 };
 
 // Assistant
 export const assistantApi = {
-  conversations: () => api.get<{ conversations: Conversation[] }>('/assistant/conversations'),
+  conversations: () => api.get<{ conversations: Conversation[] }>('assistant/conversations'),
   getConversation: (id: number) =>
-    api.get<{ conversation: Conversation; messages: Message[] }>(`/assistant/conversations/${id}`),
+    api.get<{ conversation: Conversation; messages: Message[] }>(`assistant/conversations/${id}`),
   createConversation: (title: string, crop_id?: number) =>
-    api.post<{ conversation: Conversation }>('/assistant/conversations', { title, crop_id }),
-  deleteConversation: (id: number) => api.delete(`/assistant/conversations/${id}`),
+    api.post<{ conversation: Conversation }>('assistant/conversations', { title, crop_id }),
+  deleteConversation: (id: number) => api.delete(`assistant/conversations/${id}`),
   chat: (conversationId: number, message: string, crop_id?: number) =>
-    api.post<{ message: Message }>('/assistant/chat', {
+    api.post<{ message: Message }>('assistant/chat', {
       conversation_id: conversationId,
       message,
       crop_id,
@@ -145,43 +148,43 @@ export const assistantApi = {
 // Disease
 export const diseaseApi = {
   analyze: (formData: FormData) =>
-    api.post<{ report: DiseaseReport }>('/disease/analyze', formData, {
+    api.post<{ report: DiseaseReport }>('disease/analyze', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
-  reports: () => api.get<{ reports: DiseaseReport[] }>('/disease/reports'),
+  reports: () => api.get<{ reports: DiseaseReport[] }>('disease/reports'),
 };
 
 // Soil
 export const soilApi = {
-  records: () => api.get<{ records: SoilRecord[] }>('/soil'),
+  records: () => api.get<{ records: SoilRecord[] }>('soil'),
   analyze: (data: Partial<SoilRecord>) =>
-    api.post<{ record: SoilRecord; recommendations: string }>('/soil', data),
+    api.post<{ record: SoilRecord; recommendations: string }>('soil', data),
 };
 
 // Knowledge
 export const knowledgeApi = {
   list: (params?: { category?: string; crop_id?: number; search?: string }) =>
-    api.get<{ articles: KnowledgeArticle[] }>('/knowledge', { params }),
-  get: (id: number) => api.get<{ article: KnowledgeArticle }>(`/knowledge/${id}`),
-  create: (data: Partial<KnowledgeArticle>) => api.post('/knowledge', data),
-  update: (id: number, data: Partial<KnowledgeArticle>) => api.put(`/knowledge/${id}`, data),
-  delete: (id: number) => api.delete(`/knowledge/${id}`),
+    api.get<{ articles: KnowledgeArticle[] }>('knowledge', { params }),
+  get: (id: number) => api.get<{ article: KnowledgeArticle }>(`knowledge/${id}`),
+  create: (data: Partial<KnowledgeArticle>) => api.post('knowledge', data),
+  update: (id: number, data: Partial<KnowledgeArticle>) => api.put(`knowledge/${id}`, data),
+  delete: (id: number) => api.delete(`knowledge/${id}`),
 };
 
 // Notifications
 export const notificationsApi = {
-  list: () => api.get<{ notifications: Notification[] }>('/notifications'),
-  markRead: (id: number) => api.put(`/notifications/${id}/read`),
-  markAllRead: () => api.put('/notifications/read-all'),
-  delete: (id: number) => api.delete(`/notifications/${id}`),
-  unreadCount: () => api.get<{ count: number }>('/notifications/unread-count'),
+  list: () => api.get<{ notifications: Notification[] }>('notifications'),
+  markRead: (id: number) => api.put(`notifications/${id}/read`),
+  markAllRead: () => api.put('notifications/read-all'),
+  delete: (id: number) => api.delete(`notifications/${id}`),
+  unreadCount: () => api.get<{ count: number }>('notifications/unread-count'),
 };
 
 // Admin
 export const adminApi = {
-  stats: () => api.get<AdminStats>('/admin/stats'),
-  farmers: () => api.get<{ farmers: (User & { profile: FarmerProfile })[] }>('/admin/farmers'),
-  deleteFarmer: (id: number) => api.delete(`/admin/farmers/${id}`),
+  stats: () => api.get<AdminStats>('admin/stats'),
+  farmers: () => api.get<{ farmers: (User & { profile: FarmerProfile })[] }>('admin/farmers'),
+  deleteFarmer: (id: number) => api.delete(`admin/farmers/${id}`),
 };
 
 export default api;
