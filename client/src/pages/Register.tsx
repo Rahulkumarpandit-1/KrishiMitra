@@ -126,8 +126,12 @@ export default function Register() {
         </div>
 
         {error && (
-          <div className="bg-rose-950/80 border border-rose-500/50 text-rose-200 px-4 py-3 rounded-2xl text-xs mb-4 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" />
+          <div 
+            role="alert" 
+            aria-live="assertive" 
+            className="bg-rose-950/80 border border-rose-500/50 text-rose-200 px-4 py-3 rounded-2xl text-xs mb-4 flex items-center gap-2"
+          >
+            <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </div>
         )}
@@ -136,65 +140,74 @@ export default function Register() {
         {step === 0 && (
           <div className="space-y-3.5">
             <div>
-              <label className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
+              <label htmlFor="reg-name" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
                 {isHi ? 'पूरा नाम (Full Name)' : 'Full Name'}
               </label>
               <input
+                id="reg-name"
                 value={form.name}
                 onChange={(e) => set('name', e.target.value)}
                 placeholder={isHi ? 'उदा. रमेश कुमार' : 'e.g. Ramesh Patel'}
                 className="w-full px-4 py-3 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-white placeholder-emerald-600 outline-none focus:border-lime-400 text-sm"
                 required
+                aria-required="true"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
+              <label htmlFor="reg-mobile" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
                 {isHi ? 'मोबाइल नंबर (Mobile Number)' : 'Mobile Number'}
               </label>
               <input
+                id="reg-mobile"
                 type="tel"
                 value={form.mobile}
                 onChange={(e) => set('mobile', e.target.value)}
                 placeholder={isHi ? '10 अंकों का मोबाइल नंबर' : '10-digit mobile number'}
                 className="w-full px-4 py-3 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-white placeholder-emerald-600 outline-none focus:border-lime-400 text-sm"
                 required
+                aria-required="true"
                 maxLength={10}
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
+                <label htmlFor="reg-password" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
                   {isHi ? 'पासवर्ड' : 'Password'}
                 </label>
                 <input
+                  id="reg-password"
                   type="password"
                   value={form.password}
                   onChange={(e) => set('password', e.target.value)}
                   placeholder="Min 6 chars"
                   className="w-full px-4 py-3 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-white placeholder-emerald-600 outline-none focus:border-lime-400 text-sm"
                   required
+                  aria-required="true"
                   minLength={6}
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
+                <label htmlFor="reg-confirm" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
                   {isHi ? 'पुष्टि करें' : 'Confirm'}
                 </label>
                 <input
+                  id="reg-confirm"
                   type="password"
                   value={form.confirmPassword}
                   onChange={(e) => set('confirmPassword', e.target.value)}
                   placeholder="Confirm password"
                   className="w-full px-4 py-3 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-white placeholder-emerald-600 outline-none focus:border-lime-400 text-sm"
                   required
+                  aria-required="true"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
+              <label htmlFor="reg-lang" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1">
                 {isHi ? 'पसंदीदा भाषा (Preferred Language)' : 'Preferred Language'}
               </label>
               <select
+                id="reg-lang"
                 value={form.preferred_language}
                 onChange={(e) => set('preferred_language', e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-white outline-none focus:border-lime-400 text-sm"

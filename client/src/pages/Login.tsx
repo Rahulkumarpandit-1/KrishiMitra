@@ -99,50 +99,61 @@ export default function Login() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" aria-label="Farmer Sign In Form">
           {error && (
-            <div className="bg-rose-950/80 border border-rose-500/50 text-rose-200 px-4 py-3 rounded-2xl text-xs flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" />
+            <div 
+              role="alert" 
+              aria-live="assertive" 
+              className="bg-rose-950/80 border border-rose-500/50 text-rose-200 px-4 py-3 rounded-2xl text-xs flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-400 shrink-0" aria-hidden="true" />
               <span>{error}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1.5">
+            <label htmlFor="login-mobile" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1.5">
               {isHi ? 'मोबाइल नंबर (Mobile Number)' : 'Mobile Number'}
             </label>
             <input
+              id="login-mobile"
               type="tel"
               value={mobile}
               onChange={(e) => setMobile(e.target.value)}
               placeholder={isHi ? '10 अंकों का मोबाइल नंबर' : '10-digit mobile number'}
               className="w-full px-4 py-3.5 rounded-2xl bg-emerald-950/90 border border-emerald-500/40 text-white placeholder-emerald-600 outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-400/20 text-sm font-medium transition-all"
               required
+              aria-required="true"
               maxLength={10}
               pattern="[0-9]{10}"
+              autoComplete="tel"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1.5">
+            <label htmlFor="login-password" className="block text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1.5">
               {isHi ? 'पासवर्ड (Password)' : 'Password'}
             </label>
             <div className="relative">
               <input
+                id="login-password"
                 type={showPw ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={isHi ? 'अपना पासवर्ड दर्ज करें' : 'Enter your password'}
                 className="w-full px-4 py-3.5 rounded-2xl bg-emerald-950/90 border border-emerald-500/40 text-white placeholder-emerald-600 outline-none focus:border-lime-400 focus:ring-2 focus:ring-lime-400/20 text-sm font-medium pr-12 transition-all"
                 required
+                aria-required="true"
                 minLength={6}
+                autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 hover:text-white p-1.5 rounded-lg transition-colors"
+                aria-label={showPw ? 'Hide password' : 'Show password'}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition-colors"
               >
-                {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPw ? <EyeOff className="w-5 h-5" aria-hidden="true" /> : <Eye className="w-5 h-5" aria-hidden="true" />}
               </button>
             </div>
           </div>

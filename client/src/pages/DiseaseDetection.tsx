@@ -344,10 +344,11 @@ export default function DiseaseDetection() {
 
         {preview ? (
           <div className="relative rounded-2xl overflow-hidden border border-emerald-400/40 bg-emerald-950/60 p-2 shadow-inner">
-            <img src={preview} alt="Leaf Preview" className="w-full rounded-xl max-h-72 object-contain mx-auto" />
+            <img src={preview} alt="Close-up preview of uploaded plant leaf for disease diagnosis" className="w-full rounded-xl max-h-72 object-contain mx-auto" />
             <button
               onClick={() => { setFile(null); setPreview(null); setResult(null); }}
-              className="absolute top-4 right-4 bg-emerald-950/90 border border-emerald-400/50 text-emerald-200 hover:text-white rounded-full p-2 shadow-xl hover:scale-110 transition-all"
+              aria-label="Remove uploaded image"
+              className="absolute top-4 right-4 bg-emerald-950/90 border border-emerald-400/50 text-emerald-200 hover:text-white rounded-full p-2 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-xl hover:scale-110 transition-all"
               title="Remove image"
             >
               ✕
@@ -355,7 +356,11 @@ export default function DiseaseDetection() {
           </div>
         ) : (
           <div
-            className="border-2 border-dashed border-emerald-500/40 rounded-2xl p-8 sm:p-10 text-center cursor-pointer hover:border-lime-400 hover:bg-emerald-900/30 transition-all group"
+            role="button"
+            tabIndex={0}
+            aria-label="Upload or capture crop leaf image"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
+            className="border-2 border-dashed border-emerald-500/40 rounded-2xl p-8 sm:p-10 text-center cursor-pointer hover:border-lime-400 hover:bg-emerald-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-400 transition-all group"
             onClick={() => fileRef.current?.click()}
             onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); }}
             onDragOver={(e) => e.preventDefault()}
@@ -412,7 +417,12 @@ export default function DiseaseDetection() {
 
       {/* Analysis Results Display */}
       {result && (
-        <div className="glass-card p-6 border-2 border-emerald-400/50 shadow-2xl space-y-4 animate-fade-in bg-gradient-to-b from-emerald-950/90 to-emerald-900/80">
+        <div 
+          role="region" 
+          aria-live="polite" 
+          aria-label="Diagnostic Assessment Results" 
+          className="glass-card p-6 border-2 border-emerald-400/50 shadow-2xl space-y-4 animate-fade-in bg-gradient-to-b from-emerald-950/90 to-emerald-900/80"
+        >
           <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
             <h2 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5 text-lime-400" />

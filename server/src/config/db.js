@@ -31,9 +31,12 @@ if (isVercel && !fs.existsSync(dbPath)) {
 
 const db = new DatabaseSync(dbPath);
 
-// Enable pragmas
+// Enable pragmas for high performance and integrity
 db.exec(`
   PRAGMA journal_mode = ${isVercel ? 'DELETE' : 'WAL'};
+  PRAGMA synchronous = NORMAL;
+  PRAGMA cache_size = -64000;
+  PRAGMA temp_store = MEMORY;
   PRAGMA foreign_keys = ON;
 `);
 
